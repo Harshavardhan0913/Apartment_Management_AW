@@ -1,6 +1,6 @@
 import { collection, getDocs, where, query, addDoc } from 'firebase/firestore';
 import { firestore } from '../firebase';
-import { Button, Container, Table, Spinner, Modal, Form, Alert } from 'react-bootstrap';
+import { Button, Container, Table, Spinner, Modal, Form } from 'react-bootstrap';
 import { useState, useEffect, useRef } from 'react';
 
 const getData = async (type,userId,userType) => {
@@ -187,7 +187,7 @@ export function AddExpense(props){
                 recordToAdd['userId'] = addRecordToUsers[i];
                 delete recordToAdd['flatNo']
                 try{
-                    const docRef = await addDoc(collection(firestore,'Maintenance'),recordToAdd);
+                    await addDoc(collection(firestore,'Maintenance'),recordToAdd);
                     console.log("Document added to Db");
                 }catch(e){
                     console.log(e);
