@@ -178,7 +178,6 @@ export function AddExpense(props){
             console.log(e);
         }
         if(addRecordToUsers.length === 0){
-            
             alert("Flat number does not exist");
         }else{
             for(var i=0;i<addRecordToUsers.length;i++){
@@ -187,7 +186,6 @@ export function AddExpense(props){
                 recordToAdd['adminAcceptance'] = "";
                 recordToAdd['userId'] = addRecordToUsers[i];
                 delete recordToAdd['flatNo']
-                
                 try{
                     const docRef = await addDoc(collection(firestore,'Maintenance'),recordToAdd);
                     console.log("Document added to Db");
