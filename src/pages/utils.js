@@ -197,14 +197,12 @@ function InputModal(props){
     const formRef = useRef(null);
     var formElements = {};
     const saveRecord = () => {
-        console.log("Save button");
         if (formRef.current) {
             const formElementsArray = Array.from(formRef.current.elements);
             formElements = formElementsArray.reduce((elements, element) => {
                 elements[element.name] = element.value;
                 return elements;
               }, {});
-            console.log(formElements);
             addToDb(formElements);
           } else {
             console.error('Form not found.');
@@ -215,6 +213,7 @@ function InputModal(props){
         <div>
             <Modal
           show={props.showInputModal}
+          onHide={props.onHideInputModal}
           size="lg"
           aria-labelledby="contained-modal-title-vcenter"
           centered
@@ -271,9 +270,7 @@ function InputModal(props){
                 excelData={props.excelData}
                 />
                 </div>
-            
-            <Button onClick={saveRecord}>Save</Button>
-            <Button onClick={props.onHideInputModal}>Close</Button>
+                <Button size='lg' onClick={saveRecord}>Save</Button>
             </Modal.Footer>
         </Modal>
         </div>
@@ -357,6 +354,7 @@ function ConfirmationModal(props){
     return(
         <Modal
             show={props.showConfirmationModal}
+            onHide={props.onHideConfirmationModal}
             size="lg"
             aria-labelledby="contained-modal-title-vcenter"
             centered
@@ -372,8 +370,7 @@ function ConfirmationModal(props){
             </Container>
             </Modal.Body>
             <Modal.Footer>
-            <Button onClick={saveExcelData}>Save</Button>
-            <Button onClick={()=>{props.onHideConfirmationModal()}}>Close</Button>
+            <Button size='lg' onClick={saveExcelData}>Save</Button>
             </Modal.Footer>
         </Modal>
     )
