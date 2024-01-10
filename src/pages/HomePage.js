@@ -14,6 +14,7 @@ function HomePage(){
     console.log(stateObject.userId);
     const [type,setType] = useState("Announcements");
     const [modalShow,setModalShow] = useState(false);
+    const [confirmationModalShow,setConfirmationModalShow] = useState(false);
 
     const userId = stateObject.userId;
     const userType = stateObject.userType;
@@ -29,8 +30,12 @@ function HomePage(){
         <div>
             <Container fluid style={{ backgroundColor: '#f0f0f0'}}>
                 <AddExpense 
-                show={modalShow}
-                onHide={() => setModalShow(false)} />
+                showInputModal={modalShow}
+                showConfirmationModal={confirmationModalShow}
+                onHideInputModal={() => setModalShow(false)} 
+                onHideConfirmationModal = {() => setConfirmationModalShow(false)}
+                onShowConfirmationModal = {() => setConfirmationModalShow(true)}
+                />
                 <Row className='text-center'>
                     <Col md="10">
                         <h1>Home Page</h1>
