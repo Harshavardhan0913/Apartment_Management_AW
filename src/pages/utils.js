@@ -436,23 +436,26 @@ function PendingRequestsModal(props){
 
     const [pendingRequestsData, setPendingRequestsData] = useState([]);
     const [rerunEffect, setRerunEffect] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
         const fetchData = async () => {
+            setIsLoading(true);
             const data = await getPendingRequests();
             setPendingRequestsData(data);
+            setIsLoading(false);
         };
-    
         fetchData();
       }, [rerunEffect]);
 
     const handleAcceptRequest = async (id) => {
         try{
             console.log("id",id);
+            setIsLoading(true);
             const docRef = doc(firestore, 'userData', id);
             await updateDoc(docRef, { status: "accepted" });
             setRerunEffect(!rerunEffect);
-            // props.onHidePendingRequestsModal();
+            setIsLoading(false);
         }catch(e){
             console.log(e);
         }
@@ -472,6 +475,7 @@ function PendingRequestsModal(props){
                 <h2>Pending Requests</h2>
                 </Modal.Title>
             </Modal.Header>
+            {isLoading && <CenteredSpinner size="60px" />}
             <Modal.Body>
                     <Container>
                         <Table striped hover bordered responsive>
