@@ -35,6 +35,7 @@ function Login(){
         for(var i=0;i<userDetails.length;i++){
             if(parseInt(userDetails[i].mobileNo) === parseInt(mobileNo.current.value) && userDetails[i].password === password.current.value){
                 stateObject.userId = userDetails[i].userId;
+                stateObject.flatNo = userDetails[i].flatNo;
                 stateObject.userType = userDetails[i].userType;
                 isValid = "true";
             }

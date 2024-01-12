@@ -16,7 +16,8 @@ function HomePage(){
     const [modalShow,setModalShow] = useState(false);
     const [confirmationModalShow,setConfirmationModalShow] = useState(false);
 
-    const userId = stateObject.userId;
+    const flatNo = stateObject.flatNo;
+    console.log(flatNo);
     const userType = stateObject.userType;
 
     const handleTypeChange = (event) => {
@@ -57,8 +58,8 @@ function HomePage(){
                     <Col>
                     {
                         type === "Announcements" ? (<Announcements />
-                        ) : type === "Maintenance" ? (<Records type={"Maintenance"} userId={userId} userType={userType} />
-                        ) : type === "Water" ? (<Records type={"Water"} userId={userId} userType={userType} />
+                        ) : type === "Maintenance" ? (<Records type={"Maintenance"} flatNo={flatNo} userType={userType} />
+                        ) : type === "Water" ? (<Records type={"Water"} flatNo={flatNo} userType={userType} />
                         ) : ( <InvalidType /> )
                     }
                         

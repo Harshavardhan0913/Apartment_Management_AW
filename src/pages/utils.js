@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import { useDropzone } from 'react-dropzone';
 
-const getData = async (type,userId,userType) => {
+const getData = async (type,flatNo, userType) => {
     var maintenanceData = [];
     try{
         const collectionRef = collection(firestore, "Maintenance");
@@ -16,15 +16,13 @@ const getData = async (type,userId,userType) => {
         }else{
             q = query(collectionRef, 
                         where("type", "==",type), 
-                        where("userId","==",userId));
+                        where("flatNo","==",parseInt(flatNo)));
         }
         const querySnapshot = await getDocs(q);
         
         querySnapshot.forEach((doc) => {
-            console.log(doc.id, " => ", doc.data());
             maintenanceData.push({id:doc.id,data:doc.data()});
         });
-        console.log("maintenance_data",maintenanceData);
         
     }catch(e){
         console.log(e);
@@ -109,14 +107,13 @@ export function Records(props){
     useEffect(() => {
         const fetchData = async () => {
             setIsLoading(true);
-            const data = await getData(props.type, props.userId, props.userType);
+            const data = await getData(props.type, props.flatNo, props.userType);
             setRecordData(data);
             setIsLoading(false);
         };
     
         fetchData();
-      }, [props.type,props.userId,props.userType]);
-    console.log(recordData);
+      }, [props.type,props.flatNo,props.userType]);
     return(
         <Container fluid className="justify-content-center align-items-center" style={{ height: '550px', backgroundColor: 'lightgray'}}>
             <Table striped bordered hover size='lg'>
@@ -124,7 +121,7 @@ export function Records(props){
                     <tr>
                         <th>Bill Type</th>
                         <th>Amount</th>
-                        <th>Month</th>
+                        <th>Date</th>
                         <th>Paid</th>
                         <th>Action</th>
                     </tr>
@@ -141,7 +138,7 @@ export function Records(props){
                         <tr key={record.id}>
                             <td>{record.data.type}</td>
                             <td>{record.data.amount}</td>
-                            <td>{record.data.month}</td>
+                            <td>{record.data.month.substring(0,3)}-{record.data.year}</td>
                             <td>{record.data.paid}</td>
                             <td><Button variant='success' disabled>Pay Now</Button></td>
                         </tr>
@@ -161,53 +158,56 @@ export function InvalidType(){
 }
 
 const addToDb = async (recordToAdd) =>{
-    var addRecordToUsers = [];
+    var flatNoRecord = [];
     try{
         const collectionRef = collection(firestore, "userData");
         const q = query(collectionRef, 
             where("flatNo", "==", parseInt(recordToAdd['flatNo'])));
         const querySnapshot = await getDocs(q);
         querySnapshot.forEach((doc) => {
-            addRecordToUsers.push(doc.data()["userId"]);
+            flatNoRecord.push(doc.data());
         });
     }catch(e){
         console.log(e);
     }
-    if(addRecordToUsers.length === 0){
+    if(flatNoRecord.length === 0){
         console.log("Flat number does not exist",recordToAdd["flatNo"]);
         return recordToAdd["flatNo"];
     }else{
-        for(var i=0;i<addRecordToUsers.length;i++){
-            recordToAdd['paid'] = "unpaid";
-            recordToAdd['mod'] = "";
-            recordToAdd['adminAcceptance'] = "";
-            recordToAdd['userId'] = addRecordToUsers[i];
-            delete recordToAdd['flatNo']
-            try{
-                await addDoc(collection(firestore,'Maintenance'),recordToAdd);
-                console.log("Document added to Db");
-            }catch(e){
-                console.log(e);
-            }
+        recordToAdd['paid'] = "unpaid";
+        recordToAdd['mod'] = "";
+        recordToAdd['adminAcceptance'] = "";
+        recordToAdd['flatNo'] = parseInt(recordToAdd['flatNo']);
+        recordToAdd['amount'] = parseInt(recordToAdd['amount']);
+        try{
+            await addDoc(collection(firestore,'Maintenance'),recordToAdd);
+            console.log("Document added to Db");
+        }catch(e){
+            console.log(e);
         }
     }
 }
 
 function InputModal(props){
     const formRef = useRef(null);
+    var recordsNotAdded = [];
     var formElements = {};
-    const saveRecord = () => {
+    var notAddedRecord = null;
+    const saveRecord = async () => {
         if (formRef.current) {
             const formElementsArray = Array.from(formRef.current.elements);
             formElements = formElementsArray.reduce((elements, element) => {
                 elements[element.name] = element.value;
                 return elements;
               }, {});
-            addToDb(formElements);
+            console.log(formElements);
+            notAddedRecord = await addToDb(formElements);
+            if(notAddedRecord){recordsNotAdded.push(notAddedRecord);}
           } else {
             console.error('Form not found.');
           }
         props.onHideInputModal();
+        alert("Added Excel data\n Data not added for flat no:"+JSON.stringify(recordsNotAdded));
     }
     return(
         <div>
@@ -226,7 +226,7 @@ function InputModal(props){
           <Modal.Body>
             <Row>
                 <Col>
-                    <Form ref={props.formRef}>
+                    <Form ref={formRef}>
                         <Form.Label>Type</Form.Label>
                         <Form.Select id='type' name='type'>
                             <option value="Maintenance">Maintenance</option>
@@ -249,6 +249,8 @@ function InputModal(props){
                             <option value="November">November</option>
                             <option value="December">December</option>
                         </Form.Select>
+                        <Form.Label>Year</Form.Label>
+                        <Form.Control type='number' id='year' name='year'/>
                         <Form.Label>Flat Number</Form.Label>
                         <Form.Control type="number" id='flatNo' name="flatNo" />
                     </Form>
