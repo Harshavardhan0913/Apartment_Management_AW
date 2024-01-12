@@ -69,6 +69,7 @@ function HomePage(){
                     </Col>
                 
                 </Row>
+                
             </Container>
         </div>
         

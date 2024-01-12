@@ -5,6 +5,7 @@ import { useState, useEffect, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import { useDropzone } from 'react-dropzone';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 
 const getData = async (type,flatNo, userType) => {
     var maintenanceData = [];
@@ -77,7 +78,7 @@ export function Announcements(){
                 {isLoading ? (
                 <tbody>
                     <tr>
-                        <td colSpan={5}><CenteredSpinner size="60px" /></td>
+                        <td colSpan={5}><CenteredSpinner /></td>
                     </tr>
                 </tbody>
                 ) : (
@@ -94,17 +95,96 @@ export function Announcements(){
     )
 };
 
-const CenteredSpinner = ({size}) => {
+const CenteredSpinner = () => {
     return (
         <div style={{textAlign:"center"}}>
-            <Spinner animation="border" variant="success" style={{width:size, height:size}}  />
+            <Spinner animation="border" variant="success" style={{width:"60px", height:"60px"}}  />
+        </div>
+    )
+}
+
+function PayExpenseModal(props){
+    const [isLoading, setIsLoading] = useState(false);
+    console.log("Record",props.record);
+    const modRef = useRef(null);
+    const handleSavePayExpense = async() => {
+        try{
+            setIsLoading(true);
+            const docRef = doc(firestore, 'Maintenance', props.record.id);
+            await updateDoc(docRef, { paid: "paid",adminAcceptance:"requested",
+                                    mod:modRef.current.value });
+            setIsLoading(false);
+            props.onHidePayExpenseModal();
+            toast.success("Request for payment approval send successfully");
+            props.setCount((x)=>x+1);
+        }catch(e){
+            console.log(e);
+        }
+    }
+
+    return(
+        <div>
+            <Modal
+                show={props.showPayExpenseModal}
+                onHide={props.onHidePayExpenseModal}
+                size="lg"
+                aria-labelledby="contained-modal-title-vcenter"
+                centered
+            >
+            <Modal.Header closeButton>
+                <Modal.Title id="contained-modal-title-vcenter">
+                <h2>Pay Expense</h2>
+                </Modal.Title>
+            </Modal.Header> 
+            {isLoading && <CenteredSpinner />}
+            <Modal.Body>
+                    <Container>
+                        <Table>
+                            <tr>
+                                <th>Amount</th>
+                                <th>Flat Number</th>
+                                <th>Type</th>
+                                <th>Date</th>
+                            </tr>
+                            {props.record?
+                                (<tr>
+                                    <td>{props.record.data.amount}</td>
+                                    <td>{props.record.data.flatNo}</td>
+                                    <td>{props.record.data.type}</td>
+                                    <td>{props.record.data.month.substring(0,3)}-{props.record.data.year}</td>
+                                </tr>): (<tr></tr>)}
+                        </Table>
+                        <Form>
+                            <Form.Label>Mode of Payment</Form.Label>
+                            <Form.Select name="mod" id="mod" ref={modRef}>
+                                <option value="Cash">Cash</option>
+                                <option value="Online">Online Payment</option>
+                            </Form.Select>
+                        </Form>
+                    </Container>
+                </Modal.Body>
+                <Modal.Footer>
+                <Button variant='danger' size='lg' onClick={handleSavePayExpense}>Save</Button>    
+                <Button variant='danger' size='lg' onClick={props.onHidePayExpenseModal}>Close</Button>
+                </Modal.Footer>
+            </Modal>
         </div>
     )
 }
 
 export function Records(props){
-    const [recordData,setRecordData] = useState([]);
-    const [isLoading,setIsLoading] = useState(false);
+    const [recordData, setRecordData] = useState([]);
+    const [isLoading, setIsLoading] = useState(false);
+    const [record, setRecord] = useState(null);
+    const [showPayExpenseModal,setShowPayExpenseModal] = useState(false);
+    const [count,setCount] = useState(0);
+
+    const handlePayExpense = (rec) => {
+        console.log(rec);
+        setRecord(rec);
+        setShowPayExpenseModal(true);
+    }
+
     useEffect(() => {
         const fetchData = async () => {
             setIsLoading(true);
@@ -114,23 +194,28 @@ export function Records(props){
         };
     
         fetchData();
-      }, [props.type,props.flatNo,props.userType]);
+      }, [props.type,props.flatNo,props.userType, count]);
     return(
         <Container fluid className="justify-content-center align-items-center" style={{ height: '550px', backgroundColor: 'lightgray'}}>
+            <PayExpenseModal onHidePayExpenseModal={()=>setShowPayExpenseModal(false)}
+            record={record} showPayExpenseModal={showPayExpenseModal} setCount={setCount}
+            />
             <Table striped bordered hover size='lg'>
                 <thead>
                     <tr>
                         <th>Bill Type</th>
+                        <th>Flat Number</th>
                         <th>Amount</th>
                         <th>Date</th>
                         <th>Paid</th>
+                        <th>Status</th>
                         <th>Action</th>
                     </tr>
                 </thead>
                 {isLoading ? (
                 <tbody>
                     <tr>
-                        <td colSpan={5}><CenteredSpinner size="60px" /></td>
+                        <td colSpan={7}><CenteredSpinner/></td>
                     </tr>
                 </tbody>
                 ) : (
@@ -138,10 +223,17 @@ export function Records(props){
                     {recordData.map((record) => (
                         <tr key={record.id}>
                             <td>{record.data.type}</td>
+                            <td>{record.data.flatNo}</td>
                             <td>{record.data.amount}</td>
                             <td>{record.data.month.substring(0,3)}-{record.data.year}</td>
                             <td>{record.data.paid}</td>
-                            <td><Button variant='success' disabled>Pay Now</Button></td>
+                            <td>{record.data.adminAcceptance}</td>
+                            {(record.data.paid === "paid")?(
+                                <td><Button variant='success' disabled onClick={() => handlePayExpense(record)}>Pay Now</Button></td>
+                            ):(
+                                <td><Button variant='success' onClick={() => handlePayExpense(record)}>Pay Now</Button></td>
+                            )}
+                            
                         </tr>
                     ))}
                 </tbody>)}
@@ -194,7 +286,11 @@ function InputModal(props){
     var recordsNotAdded = [];
     var formElements = {};
     var notAddedRecord = null;
+
+    const [isLoading,setIsLoading] = useState(false);
+
     const saveRecord = async () => {
+        setIsLoading(true);
         if (formRef.current) {
             const formElementsArray = Array.from(formRef.current.elements);
             formElements = formElementsArray.reduce((elements, element) => {
@@ -208,7 +304,12 @@ function InputModal(props){
             console.error('Form not found.');
           }
         props.onHideInputModal();
-        alert("Added Excel data\n Data not added for flat no:"+JSON.stringify(recordsNotAdded));
+        if(notAddedRecord){
+            toast.info("Added data Partially. Data not added for flat no:"+JSON.stringify(recordsNotAdded));
+        }else{
+            toast.success("Added data successfully");
+        }
+        setIsLoading(false);
     }
     return(
         <div>
@@ -221,9 +322,10 @@ function InputModal(props){
         >
           <Modal.Header closeButton>
             <Modal.Title id="contained-modal-title-vcenter">
-              Modal heading
+              Add Expense
             </Modal.Title>
           </Modal.Header>
+          {isLoading && <CenteredSpinner />}
           <Modal.Body>
             <Row>
                 <Col>
@@ -323,7 +425,7 @@ const ExcelReader = (props) => {
                 props.onHideInputModal();
                 props.onShowConfirmationModal();
             }else{
-                alert("No Data Found");
+                toast.danger("No Data Found");
             }
         };
         
@@ -343,7 +445,10 @@ const ExcelReader = (props) => {
 }
 
 function ConfirmationModal(props){
+    const [isLoading,setIsLoading] = useState(false);
+
     const saveExcelData = async () => {
+        setIsLoading(true);
         var recordsNotAdded = [];
         var flatNo = null;
         console.log("Excel Data",props.excelData);
@@ -351,7 +456,12 @@ function ConfirmationModal(props){
             flatNo = await addToDb(props.excelData[i]);
             if(flatNo){recordsNotAdded.push(flatNo);}
         }
-        alert("Added Excel data\n Data not added for flat no:"+JSON.stringify(recordsNotAdded));
+        if(recordsNotAdded.length > 0 ){
+            toast.info("Added Excel data\n Data not added for flat no:"+JSON.stringify(recordsNotAdded));
+        }else{
+            toast.success("Added Excel data");
+        }
+        setIsLoading(false);
         props.onHideConfirmationModal();
     }
     return(
@@ -372,6 +482,7 @@ function ConfirmationModal(props){
             <pre>{JSON.stringify(props.excelData, null, 2)}</pre>
             </Container>
             </Modal.Body>
+            {isLoading && <CenteredSpinner />}
             <Modal.Footer>
             <Button size='lg' onClick={saveExcelData}>Save</Button>
             </Modal.Footer>
@@ -417,21 +528,21 @@ function AboutModal(props){
 function PendingRequestsModal(props){
     const getPendingRequests = async () => {
         var pendingRequests = [];
-    try{
-        const collectionRef = collection(firestore, "userData");
-        const q = query(collectionRef,
-                    where("status","==","requested"));
-        const querySnapshot = await getDocs(q);
-        querySnapshot.forEach((doc) => {
-            pendingRequests.push({id:doc.id,data:doc.data()});
-        });
-        console.log("pendingRequests",pendingRequests);
-        
-    }catch(e){
-        console.log(e);
-    }finally{
-        return pendingRequests;
-    }
+        try{
+            const collectionRef = collection(firestore, "userData");
+            const q = query(collectionRef,
+                        where("status","==","requested"));
+            const querySnapshot = await getDocs(q);
+            querySnapshot.forEach((doc) => {
+                pendingRequests.push({id:doc.id,data:doc.data()});
+            });
+            console.log("pendingRequests",pendingRequests);
+            
+        }catch(e){
+            console.log(e);
+        }finally{
+            return pendingRequests;
+        }
     }
 
     const [pendingRequestsData, setPendingRequestsData] = useState([]);
@@ -474,8 +585,8 @@ function PendingRequestsModal(props){
                 <Modal.Title id="contained-modal-title-vcenter">
                 <h2>Pending Requests</h2>
                 </Modal.Title>
-            </Modal.Header>
-            {isLoading && <CenteredSpinner size="60px" />}
+            </Modal.Header> 
+            {isLoading && <CenteredSpinner />}
             <Modal.Body>
                     <Container>
                         <Table striped hover bordered responsive>
@@ -507,9 +618,109 @@ function PendingRequestsModal(props){
         </div>
     )
 }
+
+function PaymentRequestsModal(props){
+    const [paymentRequestsData, setPaymentRequestsData] = useState([]);
+    const [isLoading, setIsLoading] = useState(false);
+    const [rerunEffect, setRerunEffect] = useState(false);
+
+    const getPaymentsRequests = async () => {
+        var paymentRequests = [];
+        try{
+            const collectionRef = collection(firestore, "Maintenance");
+            const q = query(collectionRef,
+                        where("paid","==","paid"),
+                        where("adminAcceptance","==","requested"));
+            const querySnapshot = await getDocs(q);
+            querySnapshot.forEach((doc) => {
+                paymentRequests.push({id:doc.id,data:doc.data()});
+            });
+            console.log("paymentRequests",paymentRequests);
+            
+        }catch(e){
+            console.log(e);
+        }finally{
+            return paymentRequests;
+        }
+    }
+
+    const handleAcceptPaymentRequest = async(id) => {
+        try{
+            setIsLoading(true);
+            const docRef = doc(firestore, 'Maintenance', id);
+            await updateDoc(docRef, { adminAcceptance: "True" });
+            setRerunEffect(!rerunEffect);
+            setIsLoading(false);
+        }catch(e){
+            console.log(e);
+        }
+    }
+
+    useEffect(() => {
+        const fetchData = async () => {
+            setIsLoading(true);
+            const data = await getPaymentsRequests();
+            setPaymentRequestsData(data);
+            setIsLoading(false);
+        };
+        fetchData();
+      }, [rerunEffect]);
+
+    return(
+        <div>
+            <Modal
+                show={props.showPaymentRequestsModal}
+                onHide={props.onHidePaymentRequestsModal}
+                size="lg"
+                aria-labelledby="contained-modal-title-vcenter"
+                centered
+            >
+            <Modal.Header closeButton>
+                <Modal.Title id="contained-modal-title-vcenter">
+                <h2>Payment Requests</h2>
+                </Modal.Title>
+            </Modal.Header> 
+            {isLoading && <CenteredSpinner />}
+            <Modal.Body>
+                    <Container>
+                        <Table striped hover bordered responsive>
+                            <thead>
+                                <tr>
+                                    <th>Flat Number</th>
+                                    <th>Type</th>
+                                    <th>Amount</th>
+                                    <th>Mode of Payment</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                { paymentRequestsData.map((request)=>(
+                                    <tr key={request.id}>
+                                        <td>{request.data.flatNo}</td>
+                                        <td>{request.data.flatNo}</td>
+                                        <td>{request.data.type}</td>
+                                        <td>{request.data.amount}</td>
+                                        <td>{request.data.mod}</td>
+                                        <td>{request.data.month.substring(0,3)}-{request.data.year}</td>
+                                        <td><Button onClick={() => handleAcceptPaymentRequest(request.id)}>Accept</Button></td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </Table>
+                    </Container>
+                </Modal.Body>
+                <Modal.Footer>
+                <Button variant='danger' size='lg' onClick={props.onHidePaymentRequestsModal}>Close</Button>
+                </Modal.Footer>
+            </Modal>
+        </div>
+    )
+}
+
 export function Menu(){
     const [showAboutModal,setShowAboutModal] = useState(false);
     const [showPendingRequestsModal,setShowPendingRequestsModal] = useState(false);
+    const [showPaymentRequestsModal,setShowPaymentRequestsModal] = useState(false);
     const navigate = useNavigate();
     const handleLogout = () => {
         navigate('/',);
@@ -522,6 +733,9 @@ export function Menu(){
             <PendingRequestsModal showPendingRequestsModal={showPendingRequestsModal}
             onHidePendingRequestsModal={()=>setShowPendingRequestsModal(false)}
             />
+            <PaymentRequestsModal showPaymentRequestsModal={showPaymentRequestsModal}
+            onHidePaymentRequestsModal={()=>{setShowPaymentRequestsModal(false)}}
+            />
             <Dropdown className='h-100' drop='down-centered'>
                     <Dropdown.Toggle className='w-100 h-100'
                         variant="outline-info" id="dropdown-basic">
@@ -529,6 +743,7 @@ export function Menu(){
                     </Dropdown.Toggle>
 
                     <Dropdown.Menu>
+                    <Dropdown.Item onClick={()=> setShowPaymentRequestsModal(true)}>Payment Requests</Dropdown.Item>
                     <Dropdown.Item onClick={()=> setShowPendingRequestsModal(true)}>Pending Requests</Dropdown.Item>
                     <Dropdown.Item onClick={()=> setShowAboutModal(true)}>About</Dropdown.Item>
                     <Dropdown.Item onClick={handleLogout}>Log out</Dropdown.Item>
