@@ -1,9 +1,10 @@
-import { collection, getDocs, where, query, addDoc } from 'firebase/firestore';
+import { collection, getDocs, where, query, addDoc, updateDoc, doc } from 'firebase/firestore';
 import { firestore } from '../firebase';
-import { Button, Container, Table, Spinner, Modal, Form, Row, Col } from 'react-bootstrap';
+import { Button, Container, Table, Spinner, Modal, Form, Row, Col, Dropdown } from 'react-bootstrap';
 import { useState, useEffect, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import { useDropzone } from 'react-dropzone';
+import { useNavigate } from 'react-router-dom';
 
 const getData = async (type,flatNo, userType) => {
     var maintenanceData = [];
@@ -385,3 +386,150 @@ const dropzoneStyle = {
     textAlign: 'center',
     cursor: 'pointer',
   };
+
+
+function AboutModal(props){
+    return(
+        <Modal
+            show={props.showAboutModal}
+            onHide={props.onHideAboutModal}
+            size="lg"
+            aria-labelledby="contained-modal-title-vcenter"
+            centered
+        >
+          <Modal.Header closeButton>
+            <Modal.Title id="contained-modal-title-vcenter">
+              <h2>About</h2>
+            </Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+                <Container>
+                    <h5>This is an Apartment Management App</h5>
+                </Container>
+            </Modal.Body>
+            <Modal.Footer>
+            <Button size='lg' onClick={props.onHideAboutModal}>Close</Button>
+            </Modal.Footer>
+        </Modal>
+    )
+}
+
+function PendingRequestsModal(props){
+    const getPendingRequests = async () => {
+        var pendingRequests = [];
+    try{
+        const collectionRef = collection(firestore, "userData");
+        const q = query(collectionRef,
+                    where("status","==","requested"));
+        const querySnapshot = await getDocs(q);
+        querySnapshot.forEach((doc) => {
+            pendingRequests.push({id:doc.id,data:doc.data()});
+        });
+        console.log("pendingRequests",pendingRequests);
+        
+    }catch(e){
+        console.log(e);
+    }finally{
+        return pendingRequests;
+    }
+    }
+
+    const [pendingRequestsData, setPendingRequestsData] = useState([]);
+    const [rerunEffect, setRerunEffect] = useState(false);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            const data = await getPendingRequests();
+            setPendingRequestsData(data);
+        };
+    
+        fetchData();
+      }, [rerunEffect]);
+
+    const handleAcceptRequest = async (id) => {
+        try{
+            console.log("id",id);
+            const docRef = doc(firestore, 'userData', id);
+            await updateDoc(docRef, { status: "accepted" });
+            setRerunEffect(!rerunEffect);
+            // props.onHidePendingRequestsModal();
+        }catch(e){
+            console.log(e);
+        }
+    }
+    
+    return(
+        <div>
+            <Modal
+                show={props.showPendingRequestsModal}
+                onHide={props.onHidePendingRequestsModal}
+                size="lg"
+                aria-labelledby="contained-modal-title-vcenter"
+                centered
+            >
+            <Modal.Header closeButton>
+                <Modal.Title id="contained-modal-title-vcenter">
+                <h2>Pending Requests</h2>
+                </Modal.Title>
+            </Modal.Header>
+            <Modal.Body>
+                    <Container>
+                        <Table striped hover bordered responsive>
+                            <thead>
+                                <tr>
+                                    <th>Mobile Number</th>
+                                    <th>Name</th>
+                                    <th>Flat No</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                { pendingRequestsData.map((request)=>(
+                                    <tr key={request.id}>
+                                        <td>{request.data.mobileNo}</td>
+                                        <td>{request.data.name}</td>
+                                        <td>{request.data.flatNo}</td>
+                                        <td><Button onClick={() => handleAcceptRequest(request.id)}>Accept</Button></td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </Table>
+                    </Container>
+                </Modal.Body>
+                <Modal.Footer>
+                <Button variant='danger' size='lg' onClick={props.onHidePendingRequestsModal}>Close</Button>
+                </Modal.Footer>
+            </Modal>
+        </div>
+    )
+}
+export function Menu(){
+    const [showAboutModal,setShowAboutModal] = useState(false);
+    const [showPendingRequestsModal,setShowPendingRequestsModal] = useState(false);
+    const navigate = useNavigate();
+    const handleLogout = () => {
+        navigate('/',);
+    }
+    return(
+        <div className='w-100 h-100'>
+            <AboutModal showAboutModal={showAboutModal}
+            onHideAboutModal={()=>setShowAboutModal(false)}
+            />
+            <PendingRequestsModal showPendingRequestsModal={showPendingRequestsModal}
+            onHidePendingRequestsModal={()=>setShowPendingRequestsModal(false)}
+            />
+            <Dropdown className='h-100' drop='down-centered'>
+                    <Dropdown.Toggle className='w-100 h-100'
+                        variant="outline-info" id="dropdown-basic">
+                        Menu
+                    </Dropdown.Toggle>
+
+                    <Dropdown.Menu>
+                    <Dropdown.Item onClick={()=> setShowPendingRequestsModal(true)}>Pending Requests</Dropdown.Item>
+                    <Dropdown.Item onClick={()=> setShowAboutModal(true)}>About</Dropdown.Item>
+                    <Dropdown.Item onClick={handleLogout}>Log out</Dropdown.Item>
+                </Dropdown.Menu>
+            </Dropdown>
+        </div>
+    );
+}

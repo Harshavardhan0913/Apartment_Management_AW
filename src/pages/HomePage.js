@@ -4,7 +4,7 @@ import Col from 'react-bootstrap/Col';
 import Form from 'react-bootstrap/Form';
 import Row from 'react-bootstrap/Row';
 import { Button, Container } from 'react-bootstrap';
-import { Announcements, Records, InvalidType, AddExpense } from './utils';
+import { Announcements, Records, InvalidType, AddExpense, Menu } from './utils';
 
 
 function HomePage(){
@@ -38,11 +38,14 @@ function HomePage(){
                 onShowConfirmationModal = {() => setConfirmationModalShow(true)}
                 />
                 <Row className='text-center'>
-                    <Col md="10">
+                    <Col md="8">
                         <h1>Home Page</h1>
                     </Col>
                     <Col>
                         <Button onClick={showAddExpense} style={{height:"95%",width:"95%"}}>Add Expense</Button>
+                    </Col>
+                    <Col>
+                        <Menu />
                     </Col>
                 </Row>
                 <Row>
