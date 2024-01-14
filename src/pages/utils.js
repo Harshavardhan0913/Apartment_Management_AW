@@ -184,6 +184,11 @@ export function Records(props){
         setShowPayExpenseModal(true);
     }
 
+    const handleDeleteExpense = (rec) => {
+
+    }
+
+
     useEffect(() => {
         const fetchData = async () => {
             setIsLoading(true);
@@ -227,11 +232,19 @@ export function Records(props){
                             <td>{record.data.month.substring(0,3)}-{record.data.year}</td>
                             <td>{record.data.paid}</td>
                             <td>{record.data.adminAcceptance}</td>
+                            <td>
                             {(record.data.paid === "paid")?(
-                                <td><Button variant='success' disabled onClick={() => handlePayExpense(record)}>Pay Now</Button></td>
+                                <Button variant='success' disabled>Pay Now</Button>
                             ):(
-                                <td><Button variant='success' onClick={() => handlePayExpense(record)}>Pay Now</Button></td>
+                                <Button variant='success' onClick={() => handlePayExpense(record)}>Pay Now</Button>
                             )}
+                            {props.userType === "admin" && (
+                                <>
+                                    <span style={{ marginLeft: '10px' }}></span>
+                                    <Button variant='danger' onClick={() => handleDeleteExpense(record)}>Delete</Button>
+                                </>
+                            )}
+                            </td>
                             
                         </tr>
                     ))}
@@ -659,7 +672,7 @@ function PaymentRequestsModal(props){
         try{
             setIsLoading(true);
             const docRef = doc(firestore, 'Maintenance', id);
-            await updateDoc(docRef, { adminAcceptance: "True" });
+            await updateDoc(docRef, { adminAcceptance: "Accepted" });
             setRerunEffect(!rerunEffect);
             setIsLoading(false);
         }catch(e){

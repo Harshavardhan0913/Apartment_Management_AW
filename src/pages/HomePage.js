@@ -26,7 +26,7 @@ function HomePage(){
 
     return(
         <div>
-            <Container fluid style={{ backgroundColor: '#f0f0f0'}}>
+            <Container fluid style={{ backgroundColor: '#f0f0f0'}} className='overflow-auto'>
             {userType === "admin" &&
                 <AddExpense 
                 showInputModal={modalShow}

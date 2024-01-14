@@ -11,6 +11,7 @@ function Login(){
     const navigate = useNavigate();
     const mobileNo = useRef();
     const password = useRef();
+    const [isLoading,setIsLoading] = useState(false);
     var userDetails = [];
     var isValid = "false";
     var stateObject = {
@@ -30,6 +31,7 @@ function Login(){
     }
 
     const handleLogin = async () => {
+        setIsLoading(true);
         console.log(mobileNo.current.value);
         console.log(password.current.value);
         await getUsersList();
@@ -53,6 +55,7 @@ function Login(){
                 }
             }
         };
+        setIsLoading(false);
         if( isValid === "true"){
             navigate('/home', {state: stateObject});
         }else if(isValid === "false"){
@@ -63,6 +66,7 @@ function Login(){
     return(
             <Container fluid className="justify-content-center align-items-center vh-100">
                 <Form>
+                    {isLoading && <CenteredSpinner />}
                     <Form.Group>
                         <Form.Label>Mobile Number:</Form.Label>
                         <Form.Control 
