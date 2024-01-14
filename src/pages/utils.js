@@ -95,7 +95,7 @@ export function Announcements(){
     )
 };
 
-const CenteredSpinner = () => {
+export const CenteredSpinner = () => {
     return (
         <div style={{textAlign:"center"}}>
             <Spinner animation="border" variant="success" style={{width:"60px", height:"60px"}}  />
@@ -180,7 +180,6 @@ export function Records(props){
     const [count,setCount] = useState(0);
 
     const handlePayExpense = (rec) => {
-        console.log(rec);
         setRecord(rec);
         setShowPayExpenseModal(true);
     }
@@ -536,7 +535,6 @@ function PendingRequestsModal(props){
             querySnapshot.forEach((doc) => {
                 pendingRequests.push({id:doc.id,data:doc.data()});
             });
-            console.log("pendingRequests",pendingRequests);
             
         }catch(e){
             console.log(e);
@@ -561,10 +559,21 @@ function PendingRequestsModal(props){
 
     const handleAcceptRequest = async (id) => {
         try{
-            console.log("id",id);
             setIsLoading(true);
             const docRef = doc(firestore, 'userData', id);
             await updateDoc(docRef, { status: "accepted" });
+            setRerunEffect(!rerunEffect);
+            setIsLoading(false);
+        }catch(e){
+            console.log(e);
+        }
+    }
+
+    const handleRejectRequest = async (id) => {
+        try{
+            setIsLoading(true);
+            const docRef = doc(firestore, 'userData', id);
+            await updateDoc(docRef, { status: "rejected" });
             setRerunEffect(!rerunEffect);
             setIsLoading(false);
         }catch(e){
@@ -604,7 +613,9 @@ function PendingRequestsModal(props){
                                         <td>{request.data.mobileNo}</td>
                                         <td>{request.data.name}</td>
                                         <td>{request.data.flatNo}</td>
-                                        <td><Button onClick={() => handleAcceptRequest(request.id)}>Accept</Button></td>
+                                        <td><Button onClick={() => handleAcceptRequest(request.id)}>Accept</Button>
+                                            <Button variant='danger' onClick={() => handleRejectRequest(request.id)}>Reject</Button>
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -717,7 +728,7 @@ function PaymentRequestsModal(props){
     )
 }
 
-export function Menu(){
+export function Menu(props){
     const [showAboutModal,setShowAboutModal] = useState(false);
     const [showPendingRequestsModal,setShowPendingRequestsModal] = useState(false);
     const [showPaymentRequestsModal,setShowPaymentRequestsModal] = useState(false);
@@ -730,12 +741,14 @@ export function Menu(){
             <AboutModal showAboutModal={showAboutModal}
             onHideAboutModal={()=>setShowAboutModal(false)}
             />
+            {props.userType === "admin" &&
             <PendingRequestsModal showPendingRequestsModal={showPendingRequestsModal}
             onHidePendingRequestsModal={()=>setShowPendingRequestsModal(false)}
-            />
+            />}
+            {props.userType === "admin" &&
             <PaymentRequestsModal showPaymentRequestsModal={showPaymentRequestsModal}
             onHidePaymentRequestsModal={()=>{setShowPaymentRequestsModal(false)}}
-            />
+            />}
             <Dropdown className='h-100' drop='down-centered'>
                     <Dropdown.Toggle className='w-100 h-100'
                         variant="outline-info" id="dropdown-basic">
@@ -743,8 +756,10 @@ export function Menu(){
                     </Dropdown.Toggle>
 
                     <Dropdown.Menu>
-                    <Dropdown.Item onClick={()=> setShowPaymentRequestsModal(true)}>Payment Requests</Dropdown.Item>
-                    <Dropdown.Item onClick={()=> setShowPendingRequestsModal(true)}>Pending Requests</Dropdown.Item>
+                    {props.userType === "admin" &&
+                    <Dropdown.Item onClick={()=> setShowPaymentRequestsModal(true)}>Payment Requests</Dropdown.Item>}
+                    {props.userType === "admin" &&
+                    <Dropdown.Item onClick={()=> setShowPendingRequestsModal(true)}>Pending Requests</Dropdown.Item>}
                     <Dropdown.Item onClick={()=> setShowAboutModal(true)}>About</Dropdown.Item>
                     <Dropdown.Item onClick={handleLogout}>Log out</Dropdown.Item>
                 </Dropdown.Menu>

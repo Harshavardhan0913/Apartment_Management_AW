@@ -10,14 +10,11 @@ import { Announcements, Records, InvalidType, AddExpense, Menu } from './utils';
 function HomePage(){
     const location = useLocation();
     const stateObject = location.state;
-    console.log(stateObject);
-    console.log(stateObject.userId);
     const [type,setType] = useState("Announcements");
     const [modalShow,setModalShow] = useState(false);
     const [confirmationModalShow,setConfirmationModalShow] = useState(false);
 
     const flatNo = stateObject.flatNo;
-    console.log(flatNo);
     const userType = stateObject.userType;
 
     const handleTypeChange = (event) => {
@@ -30,22 +27,27 @@ function HomePage(){
     return(
         <div>
             <Container fluid style={{ backgroundColor: '#f0f0f0'}}>
+            {userType === "admin" &&
                 <AddExpense 
                 showInputModal={modalShow}
                 showConfirmationModal={confirmationModalShow}
                 onHideInputModal={() => setModalShow(false)} 
                 onHideConfirmationModal = {() => setConfirmationModalShow(false)}
                 onShowConfirmationModal = {() => setConfirmationModalShow(true)}
-                />
+                />}
                 <Row className='text-center'>
-                    <Col md="8">
+                    <Col>
+                    </Col>
+                    <Col>
                         <h1>Home Page</h1>
                     </Col>
+                    <Col></Col>
+                    {userType === "admin" &&
                     <Col>
                         <Button onClick={showAddExpense} style={{height:"95%",width:"95%"}}>Add Expense</Button>
-                    </Col>
+                    </Col>}
                     <Col>
-                        <Menu />
+                        <Menu userType={userType} />
                     </Col>
                 </Row>
                 <Row>

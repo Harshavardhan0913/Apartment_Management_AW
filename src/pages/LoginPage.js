@@ -1,9 +1,11 @@
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { collection, getDocs, addDoc } from 'firebase/firestore';
+import { collection, getDocs, addDoc, query, where } from 'firebase/firestore';
 import { firestore } from '../firebase';
 import { Button, Container, Row, Col, Form } from 'react-bootstrap';
 import { v4 as uuidv4 } from 'uuid';
+import { toast } from 'react-toastify';
+import { CenteredSpinner } from './utils';
 
 function Login(){
     const navigate = useNavigate();
@@ -33,17 +35,28 @@ function Login(){
         await getUsersList();
         console.log(userDetails);
         for(var i=0;i<userDetails.length;i++){
-            if(parseInt(userDetails[i].mobileNo) === parseInt(mobileNo.current.value) && userDetails[i].password === password.current.value){
-                stateObject.userId = userDetails[i].userId;
-                stateObject.flatNo = userDetails[i].flatNo;
-                stateObject.userType = userDetails[i].userType;
-                isValid = "true";
+            if(parseInt(userDetails[i].mobileNo) === parseInt(mobileNo.current.value) && 
+                userDetails[i].password === password.current.value){
+                if(userDetails[i].status === "requested"){
+                    toast.info("User sign in request still in progress");
+                    isValid="notInvalid";
+                }
+                else if(userDetails[i].status === "rejected"){
+                    toast.error("User sign in request rejected. Contact owner");
+                    isValid="notInvalid";
+                }
+                else {
+                    stateObject.userId = userDetails[i].userId;
+                    stateObject.flatNo = userDetails[i].flatNo;
+                    stateObject.userType = userDetails[i].userType;
+                    isValid = "true";
+                }
             }
         };
         if( isValid === "true"){
             navigate('/home', {state: stateObject});
-        }else{
-            alert("Invalid Login");
+        }else if(isValid === "false"){
+            toast.error("Invalid Login");
         };
     }
 
@@ -70,18 +83,36 @@ function Login(){
     );
 }
 
-function SignUp(){
+function SignUp(props){
     const name = useRef();
     const mobileNo = useRef();
     const flatNo = useRef();
     const password = useRef();
-    const navigate = useNavigate();
-    var stateObject = {
-        userId:-1,
-    };
+    const [isLoading,setIsLoading] = useState(false);
+
+    const validateUser = async(user) => {
+        try{
+            if(user.mobileNo.length !== 10){
+                return "Mobile number not Valid";
+            }
+            const collectionRef = collection(firestore, "userData");
+            const q = query(collectionRef, 
+                where("mobileNo", "==", user['mobileNo']));
+            const querySnapshot = await getDocs(q);
+            console.log(querySnapshot);
+            console.log(querySnapshot.size);
+            if(parseInt(querySnapshot.size) > 0){
+                return "User Already exists";
+            }
+        }catch(e){
+            console.log(e);
+            return "";
+        }
+        return "";
+    }
 
     const handleSignIn = async () => {
-        console.log("in function");
+        setIsLoading(true);
         const newUser = {
             "userId": uuidv4(),
             "name": name.current.value,
@@ -91,29 +122,41 @@ function SignUp(){
             "userType": "user",
             "status": "requested"
         }
-        console.log(newUser);
         try{
-            const docRef = await addDoc(collection(firestore, "userData"), newUser);
-            console.log(docRef.id);
-            stateObject.userId = newUser.userId;
-            navigate('/home', {state: stateObject});
+            const validationMessage = await validateUser(newUser);
+            console.log(validationMessage);
+            if(validationMessage!== ""){
+                toast.error(validationMessage);
+            }else{
+                const docRef = await addDoc(collection(firestore, "userData"), newUser);
+                console.log(docRef.id);
+                toast.info("Request for new user sent successfully");
+                props.setLos("login");
+            }
         }catch(e){
+            toast.error("Failed to Sign in user");
             console.log(e);
         }
+        setIsLoading(false);
     }
 
     return(
         <Container fluid className="justify-content-center align-items-center vh-100">
+            <div style={{position:'absolute',width:'25%'}}
+             >{isLoading && <CenteredSpinner/>}</div>
             <Form>
                 <Form.Group className="mb-3">
                     <Form.Label>Name</Form.Label>
-                    <Form.Control type='text' name='name' ref={name} placeholder='Name' /><br />
+                    <Form.Control type='text' name='name' ref={name} placeholder='Name' required/><br />
                     <Form.Label>Mobile Number</Form.Label>
-                    <Form.Control type='number' name='mobileNumber' ref={mobileNo}  placeholder='Mobile Number' /><br />
+                    <Form.Control type='number'
+                            name='mobileNumber' ref={mobileNo}  
+                            placeholder='Mobile Number' required
+                            /><br />
                     <Form.Label>Flat Number</Form.Label>
-                    <Form.Control type='number' name='flatNumber' ref={flatNo} placeholder='Flat Number' /><br />
+                    <Form.Control type='number' name='flatNumber' ref={flatNo} placeholder='Flat Number' required/><br />
                     <Form.Label>Password</Form.Label>
-                    <Form.Control type='password' name='password' ref={password} placeholder='Password' />
+                    <Form.Control type='password' name='password' ref={password} placeholder='Password' required/>
                 </Form.Group>
                 <Button className='w-100' onClick={handleSignIn}>Sign In</Button>
             </Form>
@@ -142,7 +185,7 @@ function LoginPage(){
             <Row>
                 <Col>
                     { los === "login" && <Login />}
-                    { los === "signin" && <SignUp />}
+                    { los === "signin" && <SignUp setLos={setLos}/>}
                 </Col>
             </Row>
         </Container>
