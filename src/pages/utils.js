@@ -721,7 +721,6 @@ function PaymentRequestsModal(props){
                                 { paymentRequestsData.map((request)=>(
                                     <tr key={request.id}>
                                         <td>{request.data.flatNo}</td>
-                                        <td>{request.data.flatNo}</td>
                                         <td>{request.data.type}</td>
                                         <td>{request.data.amount}</td>
                                         <td>{request.data.mod}</td>

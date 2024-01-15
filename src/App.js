@@ -17,7 +17,7 @@ function App() {
         </Routes>
       </Router>
       <ToastContainer 
-                position='bottom-left'/>
+                position='top-left'/>
     </div>
   );
 }
