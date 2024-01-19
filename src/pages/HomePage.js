@@ -3,8 +3,8 @@ import { useState } from 'react';
 import Col from 'react-bootstrap/Col';
 import Form from 'react-bootstrap/Form';
 import Row from 'react-bootstrap/Row';
-import { Button, Container } from 'react-bootstrap';
-import { Announcements, Records, InvalidType, AddMaintenance, Menu, Expenses } from './utils';
+import { Container, Dropdown } from 'react-bootstrap';
+import { Announcements, Records, InvalidType, AddMaintenance, Menu, Expenses, ExpenseModal } from './utils';
 
 
 function HomePage(){
@@ -12,6 +12,7 @@ function HomePage(){
     const stateObject = location.state;
     const [type,setType] = useState("Announcements");
     const [modalShow,setModalShow] = useState(false);
+    const [refresh, setRefresh] = useState(false);
     const [confirmationModalShow,setConfirmationModalShow] = useState(false);
     const [expenseModalShow,setExpenseModalShow] = useState(false);
 
@@ -20,13 +21,6 @@ function HomePage(){
 
     const handleTypeChange = (event) => {
         setType(event.target.value);
-    }
-    const showAddMaintenance = () => {
-        setModalShow(true);
-    }
-
-    const showAddExpense = () => {
-        setExpenseModalShow(true);
     }
 
     return(
@@ -40,6 +34,12 @@ function HomePage(){
                 onHideConfirmationModal = {() => setConfirmationModalShow(false)}
                 onShowConfirmationModal = {() => setConfirmationModalShow(true)}
                 />}
+                <ExpenseModal 
+                expenseModalShow={expenseModalShow} 
+                onHideExpenseModal={()=>setExpenseModalShow(false)}
+                refresh={refresh}
+                setRefresh={setRefresh}
+                />
                 <Row className='text-center'>
                     <Col>
                     </Col>
@@ -47,14 +47,19 @@ function HomePage(){
                         <h1>Home Page</h1>
                     </Col>
                     <Col></Col>
-                    {userType === "admin" &&
                     <Col>
-                        <Button onClick={showAddMaintenance} style={{height:"95%",width:"95%"}}>Add Maintenance</Button>
-                    </Col>}
                     {userType === "admin" &&
-                    <Col>
-                        <Button onClick={showAddExpense} style={{height:"95%",width:"95%"}}>Add Expense</Button>
-                    </Col>}
+                        <Dropdown className='w-100 h-100' drop='down-centered'>
+                            <Dropdown.Toggle variant="info" className='w-100 h-100'>
+                                Add
+                            </Dropdown.Toggle>
+                            <Dropdown.Menu className='w-100'>
+                                <Dropdown.Item onClick={()=>setExpenseModalShow(true)} >Expense</Dropdown.Item>
+                                <Dropdown.Item onClick={()=>setModalShow(true)}>Maintenance</Dropdown.Item>
+                            </Dropdown.Menu>
+                        </Dropdown>
+                    }
+                    </Col>
                     <Col>
                         <Menu userType={userType} />
                     </Col>
@@ -75,7 +80,7 @@ function HomePage(){
                         type === "Announcements" ? (<Announcements />
                         ) : type === "Maintenance" ? (<Records type={"Maintenance"} flatNo={flatNo} userType={userType} />
                         ) : type === "Water" ? (<Records type={"Water"} flatNo={flatNo} userType={userType} />
-                        ) : type === "Expenses" ? (<Expenses expenseModalShow={expenseModalShow} setExpenseModalShow={setExpenseModalShow} userType={userType} />
+                        ) : type === "Expenses" ? (<Expenses expenseModalShow={expenseModalShow} setExpenseModalShow={setExpenseModalShow} userType={userType} refresh={refresh} setRefresh={setRefresh} />
                         ) : ( <InvalidType /> )
                     }
                         

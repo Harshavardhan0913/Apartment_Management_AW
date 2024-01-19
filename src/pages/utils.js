@@ -772,7 +772,7 @@ export function Menu(props){
                         Menu
                     </Dropdown.Toggle>
 
-                    <Dropdown.Menu>
+                    <Dropdown.Menu className='w-100'>
                     {props.userType === "admin" &&
                     <Dropdown.Item onClick={()=> setShowPaymentRequestsModal(true)}>Payment Requests</Dropdown.Item>}
                     {props.userType === "admin" &&
@@ -788,7 +788,6 @@ export function Menu(props){
 export function Expenses(props){
     const [expenses, setExpenses] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
-    const [refresh, setRefresh] = useState(false);
     const [record, setRecord] = useState(null);
     const [ConfirmDeleteExpenseModalShow, setConfirmDeleteExpenseModalShow] = useState(null);
     const getExpensesData = async() => {
@@ -821,21 +820,16 @@ export function Expenses(props){
         };
     
         fetchData();
-      }, [refresh]);
+      }, [props.refresh]);
 
     return(
         <Container fluid className="justify-content-center align-items-center" style={{ height: '550px', backgroundColor: 'lightgray'}}>
             <ConfirmDeleteExpenseModal 
                 record={record}
-                setRefresh={setRefresh}
+                setRefresh={props.setRefresh}
                 ConfirmDeleteExpenseModalShow={ConfirmDeleteExpenseModalShow}
                 onHideConfirmDeleteExpenseModal = {()=> {setConfirmDeleteExpenseModalShow(false)}}
 
-            />
-            <ExpenseModal 
-                expenseModalShow={props.expenseModalShow} 
-                onHideExpenseModal={()=>props.setExpenseModalShow(false)}
-                setRefresh={setRefresh}
             />
             <Table striped hover bordered>
                 <thead>
@@ -934,7 +928,7 @@ function ConfirmDeleteExpenseModal(props){
     )
 }
 
-function ExpenseModal(props){
+export function ExpenseModal(props){
     const formRef = useRef();
     const [isLoading,setIsLoading] = useState(false);
     var addedRecord = false;
@@ -973,13 +967,13 @@ function ExpenseModal(props){
         } else {
         console.error('Form not found.');
         }
-        props.setRefresh((x)=>!x);
         props.onHideExpenseModal();
         if(!addedRecord){
             toast.error("Could not add Expense");
         }else{
             toast.success("Added data successfully");
         }
+        props.setRefresh((x)=>!x);
         setIsLoading(false);
     }
 
