@@ -1,4 +1,4 @@
-import { collection, getDocs, where, query, addDoc, updateDoc, doc } from 'firebase/firestore';
+import { collection, getDocs, where, query, addDoc, updateDoc, doc, deleteDoc } from 'firebase/firestore';
 import { firestore } from '../firebase';
 import { Button, Container, Table, Spinner, Modal, Form, Row, Col, Dropdown } from 'react-bootstrap';
 import { useState, useEffect, useRef } from 'react';
@@ -116,7 +116,7 @@ function PayExpenseModal(props){
             setIsLoading(false);
             props.onHidePayExpenseModal();
             toast.success("Request for payment approval send successfully");
-            props.setCount((x)=>x+1);
+            props.setCount((x)=>!x);
         }catch(e){
             console.log(e);
         }
@@ -177,15 +177,21 @@ export function Records(props){
     const [isLoading, setIsLoading] = useState(false);
     const [record, setRecord] = useState(null);
     const [showPayExpenseModal,setShowPayExpenseModal] = useState(false);
-    const [count,setCount] = useState(0);
+    const [count,setCount] = useState(false);
 
     const handlePayExpense = (rec) => {
         setRecord(rec);
         setShowPayExpenseModal(true);
     }
 
-    const handleDeleteExpense = (rec) => {
-
+    const handleDeleteExpense = async(rec) => {
+        try{
+            await deleteDoc(doc(collection(firestore,'Maintenance'),rec.id));
+            toast("Deleted Record Successfully");
+            setCount(!count);
+        }catch(e){
+            toast(e)
+        }
     }
 
 
@@ -262,7 +268,7 @@ export function InvalidType(){
     )
 }
 
-const addToDb = async (recordToAdd) =>{
+const addToMaintenanceDb = async (recordToAdd) =>{
     var flatNoRecord = [];
     try{
         const collectionRef = collection(firestore, "userData");
@@ -310,7 +316,7 @@ function InputModal(props){
                 return elements;
               }, {});
             console.log(formElements);
-            notAddedRecord = await addToDb(formElements);
+            notAddedRecord = await addToMaintenanceDb(formElements);
             if(notAddedRecord){recordsNotAdded.push(notAddedRecord);}
           } else {
             console.error('Form not found.');
@@ -394,7 +400,7 @@ function InputModal(props){
     )
 }
 
-export function AddExpense(props){
+export function AddMaintenance(props){
     const [excelData, setExcelData] = useState(null);
     return (
         <div>
@@ -465,7 +471,7 @@ function ConfirmationModal(props){
         var flatNo = null;
         console.log("Excel Data",props.excelData);
         for(var i=0;i<props.excelData.length;i++){
-            flatNo = await addToDb(props.excelData[i]);
+            flatNo = await addToMaintenanceDb(props.excelData[i]);
             if(flatNo){recordsNotAdded.push(flatNo);}
         }
         if(recordsNotAdded.length > 0 ){
@@ -509,7 +515,6 @@ const dropzoneStyle = {
     textAlign: 'center',
     cursor: 'pointer',
   };
-
 
 function AboutModal(props){
     return(
@@ -778,4 +783,238 @@ export function Menu(props){
             </Dropdown>
         </div>
     );
+}
+
+export function Expenses(props){
+    const [expenses, setExpenses] = useState([]);
+    const [isLoading, setIsLoading] = useState(false);
+    const [refresh, setRefresh] = useState(false);
+    const [record, setRecord] = useState(null);
+    const [ConfirmDeleteExpenseModalShow, setConfirmDeleteExpenseModalShow] = useState(null);
+    const getExpensesData = async() => {
+        try{
+            var tempData = [];
+            const collectionRef = collection(firestore, "Expenses");
+            const q = query(collectionRef);
+            const querySnapshot = await getDocs(q);
+            querySnapshot.forEach((doc) => {
+                tempData.push({id:doc.id,data:doc.data()});
+            });
+            return tempData;
+            
+        }catch(e){
+            toast.error("Unable to get Expenses Data");
+        }
+    }
+    const deleteExpense = (rec) => {
+        setRecord(rec);
+        setConfirmDeleteExpenseModalShow(true);
+
+    }
+
+    useEffect(() => {
+        const fetchData = async () => {
+            setIsLoading(true);
+            const data = await getExpensesData();
+            setExpenses(data);
+            setIsLoading(false);
+        };
+    
+        fetchData();
+      }, [refresh]);
+
+    return(
+        <Container fluid className="justify-content-center align-items-center" style={{ height: '550px', backgroundColor: 'lightgray'}}>
+            <ConfirmDeleteExpenseModal 
+                record={record}
+                setRefresh={setRefresh}
+                ConfirmDeleteExpenseModalShow={ConfirmDeleteExpenseModalShow}
+                onHideConfirmDeleteExpenseModal = {()=> {setConfirmDeleteExpenseModalShow(false)}}
+
+            />
+            <ExpenseModal 
+                expenseModalShow={props.expenseModalShow} 
+                onHideExpenseModal={()=>props.setExpenseModalShow(false)}
+                setRefresh={setRefresh}
+            />
+            <Table striped hover bordered>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Amount</th>
+                        <th>Date</th>
+                        {props.userType === "admin" && <th>Action</th>}
+                    </tr>
+                </thead>
+                <tbody>
+                {isLoading ? (
+                    <tr>
+                        <td colSpan={4}><CenteredSpinner /></td>
+                    </tr>
+                    
+                ):
+                (expenses)?(
+                    expenses.map((expense)=>(
+                        <tr key={expense.id}>
+                            <td>{expense.data.name}</td>
+                            <td>{expense.data.amount}</td>
+                            <td>{expense.data.date}</td>
+                            {props.userType === "admin" && <td><Button variant='danger' onClick={() => {deleteExpense(expense)}}>Delete</Button></td>}
+                        </tr>
+                    ))
+                ):(
+                    <tr></tr>
+                )}
+                </tbody>
+            </Table>
+        </Container>
+    )
+}
+
+function ConfirmDeleteExpenseModal(props){
+    const [isLoading,setIsLoading] = useState(false);
+    const deleteExpense = async(record) => {
+        try{
+            setIsLoading(true);
+            await deleteDoc(doc(collection(firestore,'Expenses'),record.id));
+            setIsLoading(false);
+            props.onHideConfirmDeleteExpenseModal();
+            toast.success("Deleted expense: "+record.data.name);
+            props.setRefresh((x)=>!x);
+        }catch(e){
+            toast.error(e);
+        }
+    }
+
+    return(
+        <div>
+            <Modal
+                show={props.ConfirmDeleteExpenseModalShow}
+                onHide={props.onHideConfirmDeleteExpenseModal}
+                size="lg"
+                aria-labelledby="contained-modal-title-vcenter"
+                centered
+            >
+            <Modal.Header closeButton>
+                <Modal.Title id="contained-modal-title-vcenter">
+                <h2>Confirm Delete Expense</h2>
+                </Modal.Title>
+            </Modal.Header>
+            {isLoading && <CenteredSpinner />}
+            <Modal.Body>
+                    <Container>
+                        <Table striped hover bordered>
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Amount</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                {props.record!==null ?(
+                                    <>
+                                    <td>{props.record.data.name}</td>
+                                    <td>{props.record.data.amount}</td>
+                                    <td>{props.record.data.date}</td>
+                                    </>
+                                ):(<></>)}
+                                </tr>
+                            </tbody>
+                        </Table>
+                    </Container>
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button variant='primary' size='lg' onClick={()=>{deleteExpense(props.record)}}>Delete</Button>
+                    <Button variant='danger' size='lg' onClick={props.onHideConfirmDeleteExpenseModal}>Close</Button>
+                </Modal.Footer>
+            </Modal>
+        </div>
+    )
+}
+
+function ExpenseModal(props){
+    const formRef = useRef();
+    const [isLoading,setIsLoading] = useState(false);
+    var addedRecord = false;
+
+    const addToExpensesDb = async(recordToAdd) => {
+        try{
+            await addDoc(collection(firestore,'Expenses'),recordToAdd);
+            return true;
+        }catch(e){
+            toast.error(e)
+        }
+    }
+    const validateExpense = (data) => {
+        if(data.name !== ""){
+            return true;
+        }else if(data.amount !== "" && data.amount!== "0"){
+            return true;
+        }else if(data.date !== ""){
+            return true;
+        }
+        return false;
+    }
+    const saveExpense = async() => {
+        setIsLoading(true);
+        if (formRef.current) {
+            const formElementsArray = Array.from(formRef.current.elements);
+            const formElements = formElementsArray.reduce((elements, element) => {
+                elements[element.name] = element.value;
+                return elements;
+              }, {});
+            console.log("expenses",formElements);
+            const isValid = validateExpense(formElements);
+            if(isValid){
+                addedRecord = await addToExpensesDb(formElements);
+            }
+        } else {
+        console.error('Form not found.');
+        }
+        props.setRefresh((x)=>!x);
+        props.onHideExpenseModal();
+        if(!addedRecord){
+            toast.error("Could not add Expense");
+        }else{
+            toast.success("Added data successfully");
+        }
+        setIsLoading(false);
+    }
+
+    return(
+        <div>
+            <Modal
+                show={props.expenseModalShow}
+                onHide={props.onHideExpenseModal}
+                size="lg"
+                aria-labelledby="contained-modal-title-vcenter"
+                centered
+            >
+            <Modal.Header closeButton>
+                <Modal.Title id="contained-modal-title-vcenter">
+                <h2>Add Expense</h2>
+                </Modal.Title>
+            </Modal.Header>
+            {isLoading && <CenteredSpinner />}
+            <Modal.Body>
+                    <Container>
+                        <Form ref={formRef}>
+                            <Form.Label>Name</Form.Label>
+                            <Form.Control type='text' id='name' name='name'/>
+                            <Form.Label>Amount</Form.Label>
+                            <Form.Control type='number' id='amount' name='amount'/>
+                            <Form.Label>Date</Form.Label>
+                            <Form.Control type='date' id='date' name='date'/>
+                        </Form>
+                    </Container>
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button variant='primary' size='lg' onClick={saveExpense}>Save</Button>
+                    <Button variant='danger' size='lg' onClick={props.onHideExpenseModal}>Close</Button>
+                </Modal.Footer>
+            </Modal>
+        </div>
+    )
 }

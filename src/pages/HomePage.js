@@ -4,7 +4,7 @@ import Col from 'react-bootstrap/Col';
 import Form from 'react-bootstrap/Form';
 import Row from 'react-bootstrap/Row';
 import { Button, Container } from 'react-bootstrap';
-import { Announcements, Records, InvalidType, AddExpense, Menu } from './utils';
+import { Announcements, Records, InvalidType, AddMaintenance, Menu, Expenses } from './utils';
 
 
 function HomePage(){
@@ -13,6 +13,7 @@ function HomePage(){
     const [type,setType] = useState("Announcements");
     const [modalShow,setModalShow] = useState(false);
     const [confirmationModalShow,setConfirmationModalShow] = useState(false);
+    const [expenseModalShow,setExpenseModalShow] = useState(false);
 
     const flatNo = stateObject.flatNo;
     const userType = stateObject.userType;
@@ -20,15 +21,19 @@ function HomePage(){
     const handleTypeChange = (event) => {
         setType(event.target.value);
     }
-    const showAddExpense = () => {
+    const showAddMaintenance = () => {
         setModalShow(true);
+    }
+
+    const showAddExpense = () => {
+        setExpenseModalShow(true);
     }
 
     return(
         <div>
             <Container fluid style={{ backgroundColor: '#f0f0f0'}} className='overflow-auto'>
             {userType === "admin" &&
-                <AddExpense 
+                <AddMaintenance 
                 showInputModal={modalShow}
                 showConfirmationModal={confirmationModalShow}
                 onHideInputModal={() => setModalShow(false)} 
@@ -44,6 +49,10 @@ function HomePage(){
                     <Col></Col>
                     {userType === "admin" &&
                     <Col>
+                        <Button onClick={showAddMaintenance} style={{height:"95%",width:"95%"}}>Add Maintenance</Button>
+                    </Col>}
+                    {userType === "admin" &&
+                    <Col>
                         <Button onClick={showAddExpense} style={{height:"95%",width:"95%"}}>Add Expense</Button>
                     </Col>}
                     <Col>
@@ -56,6 +65,7 @@ function HomePage(){
                         <option value="Announcements">Announcements</option>
                         <option value="Maintenance">Maintenance</option>
                         <option value="Water">Water</option>
+                        <option value="Expenses">Expenses</option>
                     </Form.Select>
                     </Col>
                 </Row>
@@ -65,6 +75,7 @@ function HomePage(){
                         type === "Announcements" ? (<Announcements />
                         ) : type === "Maintenance" ? (<Records type={"Maintenance"} flatNo={flatNo} userType={userType} />
                         ) : type === "Water" ? (<Records type={"Water"} flatNo={flatNo} userType={userType} />
+                        ) : type === "Expenses" ? (<Expenses expenseModalShow={expenseModalShow} setExpenseModalShow={setExpenseModalShow} userType={userType} />
                         ) : ( <InvalidType /> )
                     }
                         
