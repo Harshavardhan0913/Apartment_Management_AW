@@ -6,6 +6,7 @@ import * as XLSX from 'xlsx';
 import { useDropzone } from 'react-dropzone';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import _ from 'lodash';
 
 const getData = async (type,flatNo, userType) => {
     var maintenanceData = [];
@@ -542,44 +543,44 @@ function AboutModal(props){
     )
 }
 
-function PendingRequestsModal(props){
-    const getPendingRequests = async () => {
-        var pendingRequests = [];
+function UsersModal(props){
+    const getUsers = async () => {
+        var users = [];
         try{
             const collectionRef = collection(firestore, "userData");
-            const q = query(collectionRef,
-                        where("status","==","requested"));
+            const q = query(collectionRef);
             const querySnapshot = await getDocs(q);
             querySnapshot.forEach((doc) => {
-                pendingRequests.push({id:doc.id,data:doc.data()});
+                users.push({id:doc.id,data:doc.data()});
             });
             
         }catch(e){
             console.log(e);
         }finally{
-            return pendingRequests;
+            return users;
         }
     }
 
-    const [pendingRequestsData, setPendingRequestsData] = useState([]);
+    const [usersData, setUsersData] = useState([]);
     const [rerunEffect, setRerunEffect] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
         const fetchData = async () => {
             setIsLoading(true);
-            const data = await getPendingRequests();
-            setPendingRequestsData(data);
+            const data = await getUsers();
+            setUsersData(data);
             setIsLoading(false);
         };
         fetchData();
       }, [rerunEffect]);
 
-    const handleAcceptRequest = async (id) => {
+
+    const handleChangeUserStatus = async(id, status) => {
         try{
             setIsLoading(true);
             const docRef = doc(firestore, 'userData', id);
-            await updateDoc(docRef, { status: "accepted" });
+            await updateDoc(docRef, { status: status });
             setRerunEffect(!rerunEffect);
             setIsLoading(false);
         }catch(e){
@@ -587,11 +588,11 @@ function PendingRequestsModal(props){
         }
     }
 
-    const handleRejectRequest = async (id) => {
+    const handleChangeUserType = async(id, type) => {
         try{
             setIsLoading(true);
             const docRef = doc(firestore, 'userData', id);
-            await updateDoc(docRef, { status: "rejected" });
+            await updateDoc(docRef, { userType: type });
             setRerunEffect(!rerunEffect);
             setIsLoading(false);
         }catch(e){
@@ -602,46 +603,88 @@ function PendingRequestsModal(props){
     return(
         <div>
             <Modal
-                show={props.showPendingRequestsModal}
-                onHide={props.onHidePendingRequestsModal}
+                show={props.showUsersModal}
+                onHide={props.onHideUsersModal}
                 size="lg"
                 aria-labelledby="contained-modal-title-vcenter"
                 centered
             >
             <Modal.Header closeButton>
                 <Modal.Title id="contained-modal-title-vcenter">
-                <h2>Pending Requests</h2>
+                <h2>Users</h2>
                 </Modal.Title>
             </Modal.Header> 
             {isLoading && <CenteredSpinner />}
             <Modal.Body>
-                    <Container>
+                    <Container fluid style={{textAlign:'center'}}>
+                        <h3>Pending Requests</h3>
                         <Table striped hover bordered responsive>
                             <thead>
                                 <tr>
                                     <th>Mobile Number</th>
                                     <th>Name</th>
                                     <th>Flat No</th>
+                                    <th>Status</th>
                                     <th>Action</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                { pendingRequestsData.map((request)=>(
-                                    <tr key={request.id}>
-                                        <td>{request.data.mobileNo}</td>
-                                        <td>{request.data.name}</td>
-                                        <td>{request.data.flatNo}</td>
-                                        <td><Button onClick={() => handleAcceptRequest(request.id)}>Accept</Button>
-                                            <Button variant='danger' onClick={() => handleRejectRequest(request.id)}>Reject</Button>
+                                { usersData.map((user)=>(
+                                    (user.data.status==="requested" || user.data.status==="rejected")?(
+                                    <tr key={user.id}>
+                                        <td>{user.data.mobileNo}</td>
+                                        <td>{user.data.name}</td>
+                                        <td>{user.data.flatNo}</td>
+                                        <td>{_.capitalize(user.data.status)}</td>
+                                        <td>{(user.data.status==="rejected")?
+                                            (<Button variant='success' onClick={() => handleChangeUserStatus(user.id,"accepted")}>Accept</Button>
+                                            ):(
+                                            <Button variant='danger' onClick={() => handleChangeUserStatus(user.id,"rejected")}>Reject</Button>)}
                                         </td>
                                     </tr>
+                                    ):(<></>)
+                                ))}
+                            </tbody>
+                        </Table>
+                        <hr />
+                        <h3>Users</h3>
+                        <Table striped hover bordered responsive >
+                            <thead>
+                                <tr>
+                                    <th>Mobile Number</th>
+                                    <th>Name</th>
+                                    <th>Flat No</th>
+                                    <th colSpan={2}>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                { usersData.map((user)=>(
+                                    (user.data.status!=="requested" && user.data.status!=="rejected")?(
+                                        <tr key={user.id}>
+                                            <td>{user.data.mobileNo}</td>
+                                            <td>{user.data.name}</td>
+                                            <td>{user.data.flatNo}</td>
+                                            <td>{(user.data.status==="blocked")?
+                                                (<Button variant='success' onClick={() => handleChangeUserStatus(user.id,"accepted")}>Unblock</Button>
+                                                ):(
+                                                    <Button variant='danger' onClick={() => handleChangeUserStatus(user.id,"blocked")}>Block</Button>
+                                                )}
+                                            </td>
+                                            <td>{(user.data.userType==="admin")?
+                                                (<Button variant='success' onClick={() => handleChangeUserType(user.id,"user")}>Make as User</Button>
+                                                ):(
+                                                    <Button variant='danger' onClick={() => handleChangeUserType(user.id,"admin")}>Make as Admin</Button>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ):(<></>)
                                 ))}
                             </tbody>
                         </Table>
                     </Container>
                 </Modal.Body>
                 <Modal.Footer>
-                <Button variant='danger' size='lg' onClick={props.onHidePendingRequestsModal}>Close</Button>
+                <Button variant='danger' size='lg' onClick={props.onHideUsersModal}>Close</Button>
                 </Modal.Footer>
             </Modal>
         </div>
@@ -747,7 +790,7 @@ function PaymentRequestsModal(props){
 
 export function Menu(props){
     const [showAboutModal,setShowAboutModal] = useState(false);
-    const [showPendingRequestsModal,setShowPendingRequestsModal] = useState(false);
+    const [showUsersModal,setShowUsersModal] = useState(false);
     const [showPaymentRequestsModal,setShowPaymentRequestsModal] = useState(false);
     const navigate = useNavigate();
     const handleLogout = () => {
@@ -759,8 +802,8 @@ export function Menu(props){
             onHideAboutModal={()=>setShowAboutModal(false)}
             />
             {props.userType === "admin" &&
-            <PendingRequestsModal showPendingRequestsModal={showPendingRequestsModal}
-            onHidePendingRequestsModal={()=>setShowPendingRequestsModal(false)}
+            <UsersModal showUsersModal={showUsersModal}
+            onHideUsersModal={()=>setShowUsersModal(false)}
             />}
             {props.userType === "admin" &&
             <PaymentRequestsModal showPaymentRequestsModal={showPaymentRequestsModal}
@@ -776,7 +819,7 @@ export function Menu(props){
                     {props.userType === "admin" &&
                     <Dropdown.Item onClick={()=> setShowPaymentRequestsModal(true)}>Payment Requests</Dropdown.Item>}
                     {props.userType === "admin" &&
-                    <Dropdown.Item onClick={()=> setShowPendingRequestsModal(true)}>Pending Requests</Dropdown.Item>}
+                    <Dropdown.Item onClick={()=> setShowUsersModal(true)}>Users</Dropdown.Item>}
                     <Dropdown.Item onClick={()=> setShowAboutModal(true)}>About</Dropdown.Item>
                     <Dropdown.Item onClick={handleLogout}>Log out</Dropdown.Item>
                 </Dropdown.Menu>

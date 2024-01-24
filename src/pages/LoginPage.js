@@ -47,6 +47,10 @@ function Login(){
                     toast.error("User sign in request rejected. Contact owner");
                     isValid="notInvalid";
                 }
+                else if(userDetails[i].status === "blocked"){
+                    toast.error("User is blocked. Contact owner");
+                    isValid="notInvalid";
+                }
                 else {
                     stateObject.userId = userDetails[i].userId;
                     stateObject.flatNo = userDetails[i].flatNo;
