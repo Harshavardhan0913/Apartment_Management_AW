@@ -4,7 +4,7 @@ import Col from 'react-bootstrap/Col';
 import Form from 'react-bootstrap/Form';
 import Row from 'react-bootstrap/Row';
 import { Container, Dropdown } from 'react-bootstrap';
-import { Announcements, Records, InvalidType, AddMaintenance, Menu, Expenses, ExpenseModal } from './utils';
+import { Announcements, Records, InvalidType, AddMaintenance, Menu, Expenses, AddExpenseModal } from './utils';
 
 
 function HomePage(){
@@ -34,7 +34,7 @@ function HomePage(){
                 onHideConfirmationModal = {() => setConfirmationModalShow(false)}
                 onShowConfirmationModal = {() => setConfirmationModalShow(true)}
                 />}
-                <ExpenseModal 
+                <AddExpenseModal 
                 expenseModalShow={expenseModalShow} 
                 onHideExpenseModal={()=>setExpenseModalShow(false)}
                 refresh={refresh}

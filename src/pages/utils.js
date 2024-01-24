@@ -789,7 +789,7 @@ export function Expenses(props){
     const [expenses, setExpenses] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const [record, setRecord] = useState(null);
-    const [ConfirmDeleteExpenseModalShow, setConfirmDeleteExpenseModalShow] = useState(null);
+    const [modifyExpenseModalShow, setModifyExpenseModalShow] = useState(null);
     const getExpensesData = async() => {
         try{
             var tempData = [];
@@ -805,9 +805,9 @@ export function Expenses(props){
             toast.error("Unable to get Expenses Data");
         }
     }
-    const deleteExpense = (rec) => {
+    const modifyExpense = (rec) => {
         setRecord(rec);
-        setConfirmDeleteExpenseModalShow(true);
+        setModifyExpenseModalShow(true);
 
     }
 
@@ -824,11 +824,11 @@ export function Expenses(props){
 
     return(
         <Container fluid className="justify-content-center align-items-center" style={{ height: '550px', backgroundColor: 'lightgray'}}>
-            <ConfirmDeleteExpenseModal 
+            <ModifyExpenseModal 
                 record={record}
                 setRefresh={props.setRefresh}
-                ConfirmDeleteExpenseModalShow={ConfirmDeleteExpenseModalShow}
-                onHideConfirmDeleteExpenseModal = {()=> {setConfirmDeleteExpenseModalShow(false)}}
+                modifyExpenseModalShow={modifyExpenseModalShow}
+                onHideModifyExpenseModal = {()=> {setModifyExpenseModalShow(false)}}
 
             />
             <Table striped hover bordered>
@@ -853,7 +853,7 @@ export function Expenses(props){
                             <td>{expense.data.name}</td>
                             <td>{expense.data.amount}</td>
                             <td>{expense.data.date}</td>
-                            {props.userType === "admin" && <td><Button variant='danger' onClick={() => {deleteExpense(expense)}}>Delete</Button></td>}
+                            {props.userType === "admin" && <td><Button variant='warning' onClick={() => {modifyExpense(expense)}}>Modify</Button></td>}
                         </tr>
                     ))
                 ):(
@@ -865,15 +865,47 @@ export function Expenses(props){
     )
 }
 
-function ConfirmDeleteExpenseModal(props){
+function ModifyExpenseModal(props){
     const [isLoading,setIsLoading] = useState(false);
+    const formRef = useRef();
+    const [name,setName] = useState('');
+    const [amount,setAmount] = useState('');
+    const [date,setDate] = useState('');
+
+    useEffect(() => {
+        if(props.record!==null){
+            setName(props.record.data.name || '');
+            setAmount(props.record.data.amount || '');
+            setDate(props.record.data.date || '');
+        }
+      }, [props.record]);
+
+    
+    const updateExpense = async() => {
+        try{
+            setIsLoading(true);
+            const docRef = doc(collection(firestore,'Expenses'),props.record.id);
+            await updateDoc(docRef,{
+                name: name,
+                amount: amount,
+                date: date
+            })
+            setIsLoading(false);
+            props.onHideModifyExpenseModal();
+            toast.success("Updated expense: "+ name);
+            props.setRefresh((x)=>!x);
+        }catch(e){
+            console.log(e);
+            toast.error("Failed to update expense");
+        }
+    }
     const deleteExpense = async(record) => {
         try{
             setIsLoading(true);
             await deleteDoc(doc(collection(firestore,'Expenses'),record.id));
             setIsLoading(false);
-            props.onHideConfirmDeleteExpenseModal();
-            toast.success("Deleted expense: "+record.data.name);
+            props.onHideModifyExpenseModal();
+            toast.success("Deleted expense: "+name);
             props.setRefresh((x)=>!x);
         }catch(e){
             toast.error(e);
@@ -883,8 +915,8 @@ function ConfirmDeleteExpenseModal(props){
     return(
         <div>
             <Modal
-                show={props.ConfirmDeleteExpenseModalShow}
-                onHide={props.onHideConfirmDeleteExpenseModal}
+                show={props.modifyExpenseModalShow}
+                onHide={props.onHideModifyExpenseModal}
                 size="lg"
                 aria-labelledby="contained-modal-title-vcenter"
                 centered
@@ -897,38 +929,40 @@ function ConfirmDeleteExpenseModal(props){
             {isLoading && <CenteredSpinner />}
             <Modal.Body>
                     <Container>
-                        <Table striped hover bordered>
-                            <thead>
-                                <tr>
-                                    <th>Name</th>
-                                    <th>Amount</th>
-                                    <th>Date</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                {props.record!==null ?(
-                                    <>
-                                    <td>{props.record.data.name}</td>
-                                    <td>{props.record.data.amount}</td>
-                                    <td>{props.record.data.date}</td>
-                                    </>
-                                ):(<></>)}
-                                </tr>
-                            </tbody>
-                        </Table>
+                        <Form ref={formRef}>
+                            <Table striped hover bordered>
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Amount</th>
+                                        <th>Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                    {props.record!==null ?(
+                                        <>
+                                        <td><Form.Control value={name} onChange={(e) => setName(e.target.value)} name="name" id="name" type="text" /></td>
+                                        <td><Form.Control value={amount} onChange={(e) => setAmount(e.target.value)} name="amount" id="amount" type="number" /></td>
+                                        <td><Form.Control value={date} onChange={(e) => setDate(e.target.value)} name="date" id="date" type="date" /></td>
+                                        </>
+                                    ):(<></>)}
+                                    </tr>
+                                </tbody>
+                            </Table>
+                        </Form>
                     </Container>
                 </Modal.Body>
                 <Modal.Footer>
-                    <Button variant='primary' size='lg' onClick={()=>{deleteExpense(props.record)}}>Delete</Button>
-                    <Button variant='danger' size='lg' onClick={props.onHideConfirmDeleteExpenseModal}>Close</Button>
+                    <Button variant='danger' size='lg' onClick={()=>{deleteExpense(props.record)}}>Delete</Button>
+                    <Button variant='success' size='lg' onClick={()=>{updateExpense()}}>Update</Button>
                 </Modal.Footer>
             </Modal>
         </div>
     )
 }
 
-export function ExpenseModal(props){
+export function AddExpenseModal(props){
     const formRef = useRef();
     const [isLoading,setIsLoading] = useState(false);
     var addedRecord = false;
