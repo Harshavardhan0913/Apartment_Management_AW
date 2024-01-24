@@ -930,26 +930,18 @@ function ModifyExpenseModal(props){
             <Modal.Body>
                     <Container>
                         <Form ref={formRef}>
-                            <Table striped hover bordered>
-                                <thead>
-                                    <tr>
-                                        <th>Name</th>
-                                        <th>Amount</th>
-                                        <th>Date</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
+                            
                                     {props.record!==null ?(
                                         <>
-                                        <td><Form.Control value={name} onChange={(e) => setName(e.target.value)} name="name" id="name" type="text" /></td>
-                                        <td><Form.Control value={amount} onChange={(e) => setAmount(e.target.value)} name="amount" id="amount" type="number" /></td>
-                                        <td><Form.Control value={date} onChange={(e) => setDate(e.target.value)} name="date" id="date" type="date" /></td>
+                                        <Form.Label>Name</Form.Label>
+                                        <Form.Control value={name} onChange={(e) => setName(e.target.value)} name="name" id="name" type="text" /><br />
+                                        <Form.Label>Amount</Form.Label>
+                                        <Form.Control value={amount} onChange={(e) => setAmount(e.target.value)} name="amount" id="amount" type="number" /><br />
+                                        <Form.Label>Date</Form.Label>
+                                        <Form.Control value={date} onChange={(e) => setDate(e.target.value)} name="date" id="date" type="date" />
                                         </>
                                     ):(<></>)}
-                                    </tr>
-                                </tbody>
-                            </Table>
+
                         </Form>
                     </Container>
                 </Modal.Body>
