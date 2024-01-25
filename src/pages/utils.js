@@ -26,6 +26,23 @@ const getData = async (type,flatNo, userType) => {
         querySnapshot.forEach((doc) => {
             maintenanceData.push({id:doc.id,data:doc.data()});
         });
+        const monthIndexMap = {
+            January: 0,
+            February: 1,
+            March: 2,
+            April: 3,
+            May: 4,
+            June: 5,
+            July: 6,
+            August: 7,
+            September: 8,
+            October: 9,
+            November: 10,
+            December: 11,
+          };
+          maintenanceData = maintenanceData.sort((a, b) => monthIndexMap[b.data.month] - monthIndexMap[a.data.month]);
+          maintenanceData = maintenanceData.sort((a, b) => b.data.year - a.data.year);
+          maintenanceData = maintenanceData.sort((a, b) => a.data.flatNo - b.data.flatNo);
         
     }catch(e){
         console.log(e);
@@ -117,7 +134,7 @@ function PayExpenseModal(props){
             setIsLoading(false);
             props.onHidePayExpenseModal();
             toast.success("Request for payment approval send successfully");
-            props.setCount((x)=>!x);
+            props.setRefresh((x)=>!x);
         }catch(e){
             console.log(e);
         }
@@ -178,7 +195,6 @@ export function Records(props){
     const [isLoading, setIsLoading] = useState(false);
     const [record, setRecord] = useState(null);
     const [showPayExpenseModal,setShowPayExpenseModal] = useState(false);
-    const [count,setCount] = useState(false);
 
     const handlePayExpense = (rec) => {
         setRecord(rec);
@@ -188,10 +204,10 @@ export function Records(props){
     const handleDeleteExpense = async(rec) => {
         try{
             await deleteDoc(doc(collection(firestore,'Maintenance'),rec.id));
-            toast("Deleted Record Successfully");
-            setCount(!count);
+            toast.success("Deleted Record Successfully");
+            props.setRefresh((x)=>!x);
         }catch(e){
-            toast(e)
+            toast.error(e)
         }
     }
 
@@ -205,11 +221,11 @@ export function Records(props){
         };
     
         fetchData();
-      }, [props.type,props.flatNo,props.userType, count]);
+      }, [props.type,props.flatNo,props.userType, props.refresh]);
     return(
-        <Container fluid className="justify-content-center align-items-center" style={{ height: '550px', backgroundColor: 'lightgray'}}>
+        <Container fluid className="justify-content-center align-items-center" style={{ height: '550px', backgroundColor: 'lightgray', textAlign:"center"}}>
             <PayExpenseModal onHidePayExpenseModal={()=>setShowPayExpenseModal(false)}
-            record={record} showPayExpenseModal={showPayExpenseModal} setCount={setCount}
+            record={record} showPayExpenseModal={showPayExpenseModal} setRefresh={props.setRefresh}
             />
             <Table striped bordered hover size='lg'>
                 <thead>
@@ -237,8 +253,10 @@ export function Records(props){
                             <td>{record.data.flatNo}</td>
                             <td>{record.data.amount}</td>
                             <td>{record.data.month.substring(0,3)}-{record.data.year}</td>
-                            <td>{record.data.paid}</td>
-                            <td>{record.data.adminAcceptance}</td>
+                            <td>{_.capitalize(record.data.paid)}</td>
+                            {(record.data.adminAcceptance!=="")?
+                                (<td>{_.capitalize(record.data.adminAcceptance)}</td>):
+                                (<td>-</td>)}
                             <td>
                             {(record.data.paid === "paid")?(
                                 <Button variant='success' disabled>Pay Now</Button>
@@ -282,29 +300,59 @@ const addToMaintenanceDb = async (recordToAdd) =>{
     }catch(e){
         console.log(e);
     }
-    if(flatNoRecord.length === 0){
+    const recordExists = async(recordToAdd) => {
+        const collectionRef = collection(firestore, "Maintenance");
+        const querySnapshot = await getDocs(collectionRef);
+        var exists = false;
+        querySnapshot.forEach((doc) => {
+            if(doc.data()["month"] === recordToAdd["month"]
+                && doc.data()["year"] === parseInt(recordToAdd["year"])
+                && doc.data()["flatNo"] === parseInt(recordToAdd["flatNo"])
+                && doc.data()["type"] === recordToAdd["type"]){
+                    console.log("true");
+                    exists = true;
+                }
+        });
+        return exists;
+    }
+    const validateData = (recordToAdd) => {
+        if(recordToAdd["flatNo"] === ""
+            || recordToAdd["amount"] === ""
+            || recordToAdd["year"] === ""){
+            return false;
+        }
+        return true;
+    }
+    if(validateData(recordToAdd) === false){
+    console.log("Data format incorrect");
+    toast.error("Data format incorrect. Skipping...");
+    }else if(flatNoRecord.length === 0){
         console.log("Flat number does not exist",recordToAdd["flatNo"]);
-        return recordToAdd["flatNo"];
+        toast.error("Flat number does not exist "+recordToAdd["flatNo"]);
+    }else if(await recordExists(recordToAdd) === true){
+        console.log("Record already exists",recordToAdd["flatNo"]);
+        toast.warning("Record already exists: "+recordToAdd["flatNo"]);
     }else{
         recordToAdd['paid'] = "unpaid";
         recordToAdd['mod'] = "";
         recordToAdd['adminAcceptance'] = "";
         recordToAdd['flatNo'] = parseInt(recordToAdd['flatNo']);
         recordToAdd['amount'] = parseInt(recordToAdd['amount']);
+        recordToAdd['year'] = parseInt(recordToAdd['year']);
         try{
             await addDoc(collection(firestore,'Maintenance'),recordToAdd);
             console.log("Document added to Db");
+            toast.success("Document added successfully for flat No: "+recordToAdd["flatNo"]);
         }catch(e){
             console.log(e);
+            toast.error(e);
         }
     }
 }
 
 function InputModal(props){
     const formRef = useRef(null);
-    var recordsNotAdded = [];
     var formElements = {};
-    var notAddedRecord = null;
 
     const [isLoading,setIsLoading] = useState(false);
 
@@ -317,19 +365,46 @@ function InputModal(props){
                 return elements;
               }, {});
             console.log(formElements);
-            notAddedRecord = await addToMaintenanceDb(formElements);
-            if(notAddedRecord){recordsNotAdded.push(notAddedRecord);}
+            await addToMaintenanceDb(formElements);
           } else {
             console.error('Form not found.');
           }
         props.onHideInputModal();
-        if(notAddedRecord){
-            toast.info("Added data Partially. Data not added for flat no:"+JSON.stringify(recordsNotAdded));
-        }else{
-            toast.success("Added data successfully");
-        }
+        props.setRefresh((x)=>!x);
         setIsLoading(false);
     }
+
+    const getFlatNos = async() => {
+        var flats = [];
+        const querySnapshot = await getDocs(collection(firestore, "userData"));
+        querySnapshot.forEach((doc) => {
+            flats.push(parseInt(doc.data()["flatNo"]));
+        });
+        flats = [...new Set(flats)];
+        flats = flats.sort((a,b) => a-b);
+        return flats;
+    }
+    const quickAddRecord = async () => {
+        setIsLoading(true);
+        if (formRef.current) {
+            const formElementsArray = Array.from(formRef.current.elements);
+            formElements = formElementsArray.reduce((elements, element) => {
+                elements[element.name] = element.value;
+                return elements;
+            }, {});
+            const flatNos = await getFlatNos();
+            for(var i=0;i<flatNos.length;i++){
+                formElements["flatNo"] = flatNos[i];
+                await addToMaintenanceDb(formElements);
+            }
+          } else {
+            console.error('Form not found.');
+          }
+        props.onHideInputModal();
+        props.setRefresh((x)=>!x);
+        setIsLoading(false);
+    }
+
     return(
         <div>
             <Modal
@@ -386,15 +461,17 @@ function InputModal(props){
             </Row>
             </Modal.Body>
             <Modal.Footer>
-                <div><h6>Add from an excel File</h6></div>
-                <div>
-                <ExcelReader onHideInputModal={props.onHideInputModal} 
-                onShowConfirmationModal={props.onShowConfirmationModal}
-                setExcelData={props.setExcelData}
-                excelData={props.excelData}
-                />
-                </div>
-                <Button size='lg' onClick={saveRecord}>Save</Button>
+                <Row>
+                    <Col><h6>Add from an excel File</h6></Col>
+                    <Col md={4}><ExcelReader onHideInputModal={props.onHideInputModal} 
+                        onShowConfirmationModal={props.onShowConfirmationModal}
+                        setExcelData={props.setExcelData}
+                        excelData={props.excelData}
+                        />
+                    </Col>
+                    <Col><Button variant='outline-primary' size='lg' onClick={saveRecord}>Add</Button>
+                        <Button variant='outline-primary' size='lg' onClick={quickAddRecord}>Quick Add</Button></Col>
+                </Row>
             </Modal.Footer>
         </Modal>
         </div>
@@ -410,10 +487,14 @@ export function AddMaintenance(props){
                 onShowConfirmationModal={props.onShowConfirmationModal}
                 setExcelData={setExcelData}
                 excelData={excelData}
+                refresh={props.refresh}
+                setRefresh={props.setRefresh}
             />
             <ConfirmationModal showConfirmationModal={props.showConfirmationModal} 
                 onHideConfirmationModal={props.onHideConfirmationModal}
                 excelData={excelData}
+                refresh={props.refresh}
+                setRefresh={props.setRefresh}
             />
         </div>
       );
@@ -468,19 +549,12 @@ function ConfirmationModal(props){
 
     const saveExcelData = async () => {
         setIsLoading(true);
-        var recordsNotAdded = [];
-        var flatNo = null;
         console.log("Excel Data",props.excelData);
         for(var i=0;i<props.excelData.length;i++){
-            flatNo = await addToMaintenanceDb(props.excelData[i]);
-            if(flatNo){recordsNotAdded.push(flatNo);}
-        }
-        if(recordsNotAdded.length > 0 ){
-            toast.info("Added Excel data\n Data not added for flat no:"+JSON.stringify(recordsNotAdded));
-        }else{
-            toast.success("Added Excel data");
+            await addToMaintenanceDb(props.excelData[i]);
         }
         setIsLoading(false);
+        props.setRefresh((x)=>!x);
         props.onHideConfirmationModal();
     }
     return(
@@ -625,7 +699,7 @@ function UsersModal(props){
                                     <th>Name</th>
                                     <th>Flat No</th>
                                     <th>Status</th>
-                                    <th>Action</th>
+                                    <th colSpan={2}>Action</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -636,11 +710,25 @@ function UsersModal(props){
                                         <td>{user.data.name}</td>
                                         <td>{user.data.flatNo}</td>
                                         <td>{_.capitalize(user.data.status)}</td>
-                                        <td>{(user.data.status==="rejected")?
-                                            (<Button variant='success' onClick={() => handleChangeUserStatus(user.id,"accepted")}>Accept</Button>
+                                        {(user.data.status==="rejected")?
+                                            (<>
+                                            <td>
+                                                <Button variant='danger' disabled onClick={() => handleChangeUserStatus(user.id,"rejected")}>Reject</Button>
+                                            </td>
+                                            <td>
+                                                <Button variant='success' onClick={() => handleChangeUserStatus(user.id,"accepted")}>Accept</Button>
+                                            </td>
+                                            </>
                                             ):(
-                                            <Button variant='danger' onClick={() => handleChangeUserStatus(user.id,"rejected")}>Reject</Button>)}
-                                        </td>
+                                            <><td>
+                                                <Button variant='danger' onClick={() => handleChangeUserStatus(user.id,"rejected")}>Reject</Button>
+                                            </td>
+                                            <td>
+                                                <Button variant='success' onClick={() => handleChangeUserStatus(user.id,"accepted")}>Accept</Button>
+                                            </td>
+                                            </>
+                                            )}
+                                        
                                     </tr>
                                     ):(<></>)
                                 ))}
@@ -833,6 +921,7 @@ export function Expenses(props){
     const [isLoading, setIsLoading] = useState(false);
     const [record, setRecord] = useState(null);
     const [modifyExpenseModalShow, setModifyExpenseModalShow] = useState(null);
+    const [totalExpenses, setTotalExpenses] = useState(0);
     const getExpensesData = async() => {
         try{
             var tempData = [];
@@ -853,12 +942,20 @@ export function Expenses(props){
         setModifyExpenseModalShow(true);
 
     }
+    const getTotalExpenses = (tempData) => {
+        var totalExp = 0;
+        for(var i=0;i<tempData.length;i++){
+            totalExp += parseInt(tempData[i].data.amount);
+        }
+        setTotalExpenses(totalExp);
 
+    }
     useEffect(() => {
         const fetchData = async () => {
             setIsLoading(true);
             const data = await getExpensesData();
             setExpenses(data);
+            getTotalExpenses(data);
             setIsLoading(false);
         };
     
@@ -866,7 +963,7 @@ export function Expenses(props){
       }, [props.refresh]);
 
     return(
-        <Container fluid className="justify-content-center align-items-center" style={{ height: '550px', backgroundColor: 'lightgray'}}>
+        <Container fluid className="justify-content-center align-items-center" style={{ height: '550px', backgroundColor: 'lightgray', textAlign:"center"}}>
             <ModifyExpenseModal 
                 record={record}
                 setRefresh={props.setRefresh}
@@ -875,10 +972,18 @@ export function Expenses(props){
 
             />
             <Table striped hover bordered>
+                <tbody>
+                    <tr>
+                        <th>Total Expenses(Rs.)</th>
+                        <td>{totalExpenses}</td>
+                    </tr>
+                </tbody>
+            </Table>
+            <Table striped hover bordered>
                 <thead>
                     <tr>
                         <th>Name</th>
-                        <th>Amount</th>
+                        <th>Amount(Rs.)</th>
                         <th>Date</th>
                         {props.userType === "admin" && <th>Action</th>}
                     </tr>

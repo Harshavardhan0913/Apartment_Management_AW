@@ -33,6 +33,8 @@ function HomePage(){
                 onHideInputModal={() => setModalShow(false)} 
                 onHideConfirmationModal = {() => setConfirmationModalShow(false)}
                 onShowConfirmationModal = {() => setConfirmationModalShow(true)}
+                refresh={refresh}
+                setRefresh={setRefresh}
                 />}
                 <AddExpenseModal 
                 expenseModalShow={expenseModalShow} 
@@ -78,8 +80,8 @@ function HomePage(){
                     <Col>
                     {
                         type === "Announcements" ? (<Announcements />
-                        ) : type === "Maintenance" ? (<Records type={"Maintenance"} flatNo={flatNo} userType={userType} />
-                        ) : type === "Water" ? (<Records type={"Water"} flatNo={flatNo} userType={userType} />
+                        ) : type === "Maintenance" ? (<Records type={"Maintenance"} flatNo={flatNo} userType={userType} refresh={refresh} setRefresh={setRefresh}/>
+                        ) : type === "Water" ? (<Records type={"Water"} flatNo={flatNo} userType={userType} refresh={refresh} setRefresh={setRefresh}/>
                         ) : type === "Expenses" ? (<Expenses expenseModalShow={expenseModalShow} setExpenseModalShow={setExpenseModalShow} userType={userType} refresh={refresh} setRefresh={setRefresh} />
                         ) : ( <InvalidType /> )
                     }

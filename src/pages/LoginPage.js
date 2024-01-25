@@ -107,8 +107,6 @@ function SignUp(props){
             const q = query(collectionRef, 
                 where("mobileNo", "==", user['mobileNo']));
             const querySnapshot = await getDocs(q);
-            console.log(querySnapshot);
-            console.log(querySnapshot.size);
             if(parseInt(querySnapshot.size) > 0){
                 return "User Already exists";
             }
@@ -125,7 +123,7 @@ function SignUp(props){
             "userId": uuidv4(),
             "name": name.current.value,
             "mobileNo": mobileNo.current.value,
-            "flatNo": flatNo.current.value,
+            "flatNo": parseInt(flatNo.current.value),
             "password": password.current.value,
             "userType": "user",
             "status": "requested"
