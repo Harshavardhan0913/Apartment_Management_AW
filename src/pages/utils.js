@@ -287,7 +287,7 @@ export function InvalidType(){
     )
 }
 
-const addToMaintenanceDb = async (recordToAdd) =>{
+const addToMaintenanceDb = async (recordToAdd, overrideRecord=false) =>{
     var flatNoRecord = [];
     try{
         const collectionRef = collection(firestore, "userData");
@@ -304,15 +304,23 @@ const addToMaintenanceDb = async (recordToAdd) =>{
         const collectionRef = collection(firestore, "Maintenance");
         const querySnapshot = await getDocs(collectionRef);
         var exists = false;
+        var docId = null;
         querySnapshot.forEach((doc) => {
             if(doc.data()["month"] === recordToAdd["month"]
                 && doc.data()["year"] === parseInt(recordToAdd["year"])
                 && doc.data()["flatNo"] === parseInt(recordToAdd["flatNo"])
                 && doc.data()["type"] === recordToAdd["type"]){
                     console.log("true");
-                    exists = true;
+                    if(overrideRecord){
+                        docId=doc.id;
+                    }else{
+                        exists = true;
+                    }
                 }
         });
+        if(docId){
+            await deleteDoc(doc(collection(firestore,'Maintenance'),docId));
+        }
         return exists;
     }
     const validateData = (recordToAdd) => {
@@ -342,7 +350,11 @@ const addToMaintenanceDb = async (recordToAdd) =>{
         try{
             await addDoc(collection(firestore,'Maintenance'),recordToAdd);
             console.log("Document added to Db");
-            toast.success("Document added successfully for flat No: "+recordToAdd["flatNo"]);
+            if(overrideRecord){
+                toast.success("Document overwrite successful for flat No: "+recordToAdd["flatNo"]);
+            }else{
+                toast.success("Document added successfully for flat No: "+recordToAdd["flatNo"]);
+            }
         }catch(e){
             console.log(e);
             toast.error(e);
@@ -354,12 +366,12 @@ function InputModal(props){
     var formElements = {};
 
     const [isLoading,setIsLoading] = useState(false);
-    
 
     const handleQuickAdd = () => {
         if (props.formRef.current) {
             const formElementsArray = Array.from(props.formRef.current.elements);
             const formEle = formElementsArray.reduce((elements, element) => {
+                
                 elements[element.name] = element.value;
                 return elements;
               }, {});
@@ -376,11 +388,12 @@ function InputModal(props){
         if (props.formRef.current) {
             const formElementsArray = Array.from(props.formRef.current.elements);
             formElements = formElementsArray.reduce((elements, element) => {
+                
                 elements[element.name] = element.value;
                 return elements;
               }, {});
             console.log(formElements);
-            await addToMaintenanceDb(formElements);
+            await addToMaintenanceDb(formElements,props.overrideRecord);
           } else {
             console.error('Form not found.');
           }
@@ -435,7 +448,14 @@ function InputModal(props){
                         <Form.Control type='number' id='year' name='year'/>
                         <Form.Label>Flat Number</Form.Label>
                         <Form.Control type="number" id='flatNo' name="flatNo" />
-                    </Form>
+                        <Form.Check 
+                            type='switch'
+                            id='overrideRecord'
+                            name='overrideRecord'
+                            label="Override"
+                            onChange={(e)=>props.setOverrideRecord(e.target.checked)}
+                        />
+                    </Form><br />
                 </Col>
             </Row>
             <hr />
@@ -467,6 +487,7 @@ export function AddMaintenance(props){
     const [excelData, setExcelData] = useState(null);
     const formRef = useRef();
     const [formElements,setFormElements] = useState(null);
+    const [overrideRecord,setOverrideRecord] = useState(false);
     return (
         <div>
             <QuickAddConfirmationModal
@@ -476,6 +497,7 @@ export function AddMaintenance(props){
                 setRefresh={props.setRefresh}
                 formRef={formRef}
                 formElements={formElements}
+                overrideRecord={overrideRecord}
             />
             <InputModal showInputModal={props.showInputModal} 
                 onHideInputModal={props.onHideInputModal}
@@ -487,12 +509,15 @@ export function AddMaintenance(props){
                 setRefresh={props.setRefresh}
                 formRef={formRef}
                 setFormElements={setFormElements}
+                setOverrideRecord={setOverrideRecord}
+                overrideRecord={overrideRecord}
             />
             <ConfirmationModal showConfirmationModal={props.showConfirmationModal} 
                 onHideConfirmationModal={props.onHideConfirmationModal}
                 excelData={excelData}
                 refresh={props.refresh}
                 setRefresh={props.setRefresh}
+                overrideRecord={overrideRecord}
             />
         </div>
       );
@@ -559,7 +584,7 @@ function QuickAddConfirmationModal(props){
         setIsLoading(true);
         for(var i=0;i<flatNos.length;i++){
             props.formElements["flatNo"] = flatNos[i];
-            await addToMaintenanceDb(props.formElements);
+            await addToMaintenanceDb(props.formElements,props.overrideRecord);
         }
         props.setRefresh((x)=>!x);
         setIsLoading(false);
@@ -571,7 +596,6 @@ function QuickAddConfirmationModal(props){
             const data = await getFlatNos();
             setFlatNos(data);
             setIsLoading(false);
-            
         };
         fetchData();
       }, [props.formRef]);
@@ -614,6 +638,15 @@ function QuickAddConfirmationModal(props){
                                 <th>Date</th>
                                 <td>{props.formElements.month}-{props.formElements.year}</td>
                             </tr>
+                            <tr>
+                                <th>Override</th>
+                                {(props.overrideRecord === true)?(
+                                    <td>True</td>
+                                ):(
+                                    <td>False</td>
+                                )}
+                                
+                            </tr>
                         </tbody>
                     </Table>
                 ):(
@@ -637,7 +670,7 @@ function ConfirmationModal(props){
         setIsLoading(true);
         console.log("Excel Data",props.excelData);
         for(var i=0;i<props.excelData.length;i++){
-            await addToMaintenanceDb(props.excelData[i]);
+            await addToMaintenanceDb(props.excelData[i],props.overrideRecord);
         }
         setIsLoading(false);
         props.setRefresh((x)=>!x);
