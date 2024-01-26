@@ -14,6 +14,7 @@ function HomePage(){
     const [modalShow,setModalShow] = useState(false);
     const [refresh, setRefresh] = useState(false);
     const [confirmationModalShow,setConfirmationModalShow] = useState(false);
+    const [quickAddConfirmationModalShow,setQuickAddConfirmationModalShow] = useState(false);
     const [expenseModalShow,setExpenseModalShow] = useState(false);
 
     const flatNo = stateObject.flatNo;
@@ -33,6 +34,9 @@ function HomePage(){
                 onHideInputModal={() => setModalShow(false)} 
                 onHideConfirmationModal = {() => setConfirmationModalShow(false)}
                 onShowConfirmationModal = {() => setConfirmationModalShow(true)}
+                onHideQuickAddConfirmationModal = {()=>setQuickAddConfirmationModalShow(false)}
+                onShowQuickAddConfirmationModal = {() => setQuickAddConfirmationModalShow(true)}
+                quickAddConfirmationModalShow = {quickAddConfirmationModalShow}
                 refresh={refresh}
                 setRefresh={setRefresh}
                 />}

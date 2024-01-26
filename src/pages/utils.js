@@ -258,7 +258,7 @@ export function Records(props){
                                 (<td>{_.capitalize(record.data.adminAcceptance)}</td>):
                                 (<td>-</td>)}
                             <td>
-                            {(record.data.paid === "paid")?(
+                            {(record.data.paid === "paid" || record.data.flatNo !== props.flatNo)?(
                                 <Button variant='success' disabled>Pay Now</Button>
                             ):(
                                 <Button variant='success' onClick={() => handlePayExpense(record)}>Pay Now</Button>
@@ -351,15 +351,30 @@ const addToMaintenanceDb = async (recordToAdd) =>{
 }
 
 function InputModal(props){
-    const formRef = useRef(null);
     var formElements = {};
 
     const [isLoading,setIsLoading] = useState(false);
+    
 
+    const handleQuickAdd = () => {
+        if (props.formRef.current) {
+            const formElementsArray = Array.from(props.formRef.current.elements);
+            const formEle = formElementsArray.reduce((elements, element) => {
+                elements[element.name] = element.value;
+                return elements;
+              }, {});
+            console.log(formEle);
+            props.setFormElements(formEle);
+          } else {
+            console.error('Form not found.');
+          }
+        props.onHideInputModal();
+        props.onShowQuickAddConfirmationModal();
+    } 
     const saveRecord = async () => {
         setIsLoading(true);
-        if (formRef.current) {
-            const formElementsArray = Array.from(formRef.current.elements);
+        if (props.formRef.current) {
+            const formElementsArray = Array.from(props.formRef.current.elements);
             formElements = formElementsArray.reduce((elements, element) => {
                 elements[element.name] = element.value;
                 return elements;
@@ -374,40 +389,10 @@ function InputModal(props){
         setIsLoading(false);
     }
 
-    const getFlatNos = async() => {
-        var flats = [];
-        const querySnapshot = await getDocs(collection(firestore, "userData"));
-        querySnapshot.forEach((doc) => {
-            flats.push(parseInt(doc.data()["flatNo"]));
-        });
-        flats = [...new Set(flats)];
-        flats = flats.sort((a,b) => a-b);
-        return flats;
-    }
-    const quickAddRecord = async () => {
-        setIsLoading(true);
-        if (formRef.current) {
-            const formElementsArray = Array.from(formRef.current.elements);
-            formElements = formElementsArray.reduce((elements, element) => {
-                elements[element.name] = element.value;
-                return elements;
-            }, {});
-            const flatNos = await getFlatNos();
-            for(var i=0;i<flatNos.length;i++){
-                formElements["flatNo"] = flatNos[i];
-                await addToMaintenanceDb(formElements);
-            }
-          } else {
-            console.error('Form not found.');
-          }
-        props.onHideInputModal();
-        props.setRefresh((x)=>!x);
-        setIsLoading(false);
-    }
 
     return(
         <div>
-            <Modal
+        <Modal
           show={props.showInputModal}
           onHide={props.onHideInputModal}
           size="lg"
@@ -423,7 +408,7 @@ function InputModal(props){
           <Modal.Body>
             <Row>
                 <Col>
-                    <Form ref={formRef}>
+                    <Form ref={props.formRef}>
                         <Form.Label>Type</Form.Label>
                         <Form.Select id='type' name='type'>
                             <option value="Maintenance">Maintenance</option>
@@ -470,7 +455,7 @@ function InputModal(props){
                         />
                     </Col>
                     <Col><Button variant='outline-primary' size='lg' onClick={saveRecord}>Add</Button>
-                        <Button variant='outline-primary' size='lg' onClick={quickAddRecord}>Quick Add</Button></Col>
+                        <Button variant='outline-primary' size='lg' onClick={handleQuickAdd}>Quick Add</Button></Col>
                 </Row>
             </Modal.Footer>
         </Modal>
@@ -480,15 +465,28 @@ function InputModal(props){
 
 export function AddMaintenance(props){
     const [excelData, setExcelData] = useState(null);
+    const formRef = useRef();
+    const [formElements,setFormElements] = useState(null);
     return (
         <div>
+            <QuickAddConfirmationModal
+                quickAddConfirmationModalShow={props.quickAddConfirmationModalShow}
+                onHideQuickAddConfirmationModal={props.onHideQuickAddConfirmationModal}
+                onShowQuickAddConfirmationModal={props.onShowQuickAddConfirmationModal}
+                setRefresh={props.setRefresh}
+                formRef={formRef}
+                formElements={formElements}
+            />
             <InputModal showInputModal={props.showInputModal} 
                 onHideInputModal={props.onHideInputModal}
                 onShowConfirmationModal={props.onShowConfirmationModal}
+                onShowQuickAddConfirmationModal={props.onShowQuickAddConfirmationModal}
                 setExcelData={setExcelData}
                 excelData={excelData}
                 refresh={props.refresh}
                 setRefresh={props.setRefresh}
+                formRef={formRef}
+                setFormElements={setFormElements}
             />
             <ConfirmationModal showConfirmationModal={props.showConfirmationModal} 
                 onHideConfirmationModal={props.onHideConfirmationModal}
@@ -542,6 +540,94 @@ const ExcelReader = (props) => {
             </div>
         </div>
     );
+}
+
+function QuickAddConfirmationModal(props){
+    const [isLoading,setIsLoading] = useState(false);
+    const [flatNos,setFlatNos] = useState([]);
+    const getFlatNos = async() => {
+        var flats = [];
+        const querySnapshot = await getDocs(collection(firestore, "userData"));
+        querySnapshot.forEach((doc) => {
+            flats.push(parseInt(doc.data()["flatNo"]));
+        });
+        flats = [...new Set(flats)];
+        flats = flats.sort((a,b) => a-b);
+        return flats;
+    }
+    const quickAddRecord = async () => {
+        setIsLoading(true);
+        for(var i=0;i<flatNos.length;i++){
+            props.formElements["flatNo"] = flatNos[i];
+            await addToMaintenanceDb(props.formElements);
+        }
+        props.setRefresh((x)=>!x);
+        setIsLoading(false);
+        props.onHideQuickAddConfirmationModal();
+    }
+    useEffect(() => {
+        const fetchData = async () => {
+            setIsLoading(true);
+            const data = await getFlatNos();
+            setFlatNos(data);
+            setIsLoading(false);
+            
+        };
+        fetchData();
+      }, [props.formRef]);
+    return(
+        <Modal
+            show={props.quickAddConfirmationModalShow}
+            onHide={props.onHideQuickAddConfirmationModal}
+            size="lg"
+            aria-labelledby="contained-modal-title-vcenter"
+            centered
+        >
+          <Modal.Header closeButton>
+            <Modal.Title id="contained-modal-title-vcenter">
+              <h2>Confirm the data for quick add</h2>
+            </Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <Container>
+                <h3>Flat numbers included</h3>
+                <Container fluid>
+                    {flatNos.map((flatNo)=>(
+                        <>
+                            <Button variant="outline-info" disabled>{flatNo}</Button>
+                        </>
+                    ))}
+                </Container>
+                <hr />
+                { (props.formElements != null)?(
+                    <Table>
+                        <tbody>
+                            <tr>
+                                <th>Type</th>
+                                <td>{props.formElements.type}</td>
+                            </tr>
+                            <tr>
+                                <th>Amount</th>
+                                <td>{props.formElements.amount}</td>
+                            </tr>
+                            <tr>
+                                <th>Date</th>
+                                <td>{props.formElements.month}-{props.formElements.year}</td>
+                            </tr>
+                        </tbody>
+                    </Table>
+                ):(
+                    <>No form element {props.formRef.current}</>
+                )}
+                
+            </Container>
+            </Modal.Body>
+            {isLoading && <CenteredSpinner />}
+            <Modal.Footer>
+            <Button size='lg' onClick={quickAddRecord}>Save</Button>
+            </Modal.Footer>
+        </Modal>
+    )
 }
 
 function ConfirmationModal(props){
