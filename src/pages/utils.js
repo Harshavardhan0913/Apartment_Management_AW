@@ -414,7 +414,7 @@ function InputModal(props){
         >
           <Modal.Header closeButton>
             <Modal.Title id="contained-modal-title-vcenter">
-              Add Expense
+              Add Maintenance
             </Modal.Title>
           </Modal.Header>
           {isLoading && <CenteredSpinner />}
@@ -757,16 +757,18 @@ function UsersModal(props){
     const [usersData, setUsersData] = useState([]);
     const [rerunEffect, setRerunEffect] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [hideRejectedUsers, setHideRejectedUsers] = useState(false);
 
     useEffect(() => {
         const fetchData = async () => {
             setIsLoading(true);
-            const data = await getUsers();
+            var data = await getUsers();
+            data = data.sort((a, b)=> a.data.flatNo-b.data.flatNo);
             setUsersData(data);
             setIsLoading(false);
         };
         fetchData();
-      }, [rerunEffect]);
+      }, [rerunEffect,hideRejectedUsers]);
 
 
     const handleChangeUserStatus = async(id, status) => {
@@ -811,6 +813,14 @@ function UsersModal(props){
             <Modal.Body>
                     <Container fluid style={{textAlign:'center'}}>
                         <h3>Pending Requests</h3>
+                        <div style={{width:"25%"}}>
+                            <Form.Check
+                                type="switch"
+                                id="hide_rejected"
+                                label="Hide Rejected Users"
+                                onChange={(e)=>setHideRejectedUsers(e.target.checked)}
+                            />
+                        </div>
                         <Table striped hover bordered responsive>
                             <thead>
                                 <tr>
@@ -822,7 +832,7 @@ function UsersModal(props){
                                 </tr>
                             </thead>
                             <tbody>
-                                { usersData.map((user)=>(
+                                {(hideRejectedUsers===false)?(usersData.map((user)=>(
                                     (user.data.status==="requested" || user.data.status==="rejected")?(
                                     <tr key={user.id}>
                                         <td>{user.data.mobileNo}</td>
@@ -850,7 +860,38 @@ function UsersModal(props){
                                         
                                     </tr>
                                     ):(<></>)
-                                ))}
+                                ))
+                                ):(
+                                    usersData.map((user)=>(
+                                        (user.data.status==="requested")?(
+                                        <tr key={user.id}>
+                                            <td>{user.data.mobileNo}</td>
+                                            <td>{user.data.name}</td>
+                                            <td>{user.data.flatNo}</td>
+                                            <td>{_.capitalize(user.data.status)}</td>
+                                            {(user.data.status==="rejected")?
+                                                (<>
+                                                <td>
+                                                    <Button variant='danger' disabled onClick={() => handleChangeUserStatus(user.id,"rejected")}>Reject</Button>
+                                                </td>
+                                                <td>
+                                                    <Button variant='success' onClick={() => handleChangeUserStatus(user.id,"accepted")}>Accept</Button>
+                                                </td>
+                                                </>
+                                                ):(
+                                                <><td>
+                                                    <Button variant='danger' onClick={() => handleChangeUserStatus(user.id,"rejected")}>Reject</Button>
+                                                </td>
+                                                <td>
+                                                    <Button variant='success' onClick={() => handleChangeUserStatus(user.id,"accepted")}>Accept</Button>
+                                                </td>
+                                                </>
+                                                )}
+                                            
+                                        </tr>
+                                        ):(<></>)
+                                    )) 
+                                )}
                             </tbody>
                         </Table>
                         <hr />
