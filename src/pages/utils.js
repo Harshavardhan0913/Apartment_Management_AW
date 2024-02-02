@@ -818,6 +818,7 @@ function UsersModal(props){
                                 type="switch"
                                 id="hide_rejected"
                                 label="Hide Rejected Users"
+                                checked={hideRejectedUsers}
                                 onChange={(e)=>setHideRejectedUsers(e.target.checked)}
                             />
                         </div>
